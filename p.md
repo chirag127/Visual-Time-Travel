@@ -64,6 +64,8 @@
 - Routes:
   - `POST /api/auth/signup`
   - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+  - `POST /api/forgot-password`
   - `POST /api/upload-screenshot`
   - `GET /api/history`
 - Middleware for JWT validation
@@ -138,7 +140,7 @@ visual-time-travel/
 ---
 
 ## Deployment
-- **Backend:** Render or Vercel
+- **Backend:** Render
 - **Database:** MongoDB Atlas
 - **GitHub Repo:** `https://github.com/chirag127/visual-time-travel`
 
