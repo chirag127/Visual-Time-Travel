@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Time Travel Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #4a6cf7;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4a6cf7;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #3a5ce5;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visual Time Travel Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Test Authentication</h2>
+        <p>Use these buttons to test authentication functionality:</p>
+        <button id="checkAuthButton">Check Authentication</button>
+        <button id="loginButton">Login (Test User)</button>
+        <button id="logoutButton">Logout</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Screenshot Capture</h2>
+        <p>Use these buttons to test screenshot capture functionality:</p>
+        <button id="captureButton">Capture Screenshot</button>
+        <button id="toggleCaptureButton">Toggle Capture Enabled</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test History</h2>
+        <p>Use these buttons to test history functionality:</p>
+        <button id="getHistoryButton">Get History</button>
+        <button id="clearHistoryButton">Clear History</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Output</h2>
+        <div id="output"></div>
+    </div>
+    
+    <script>
+        // Helper function to log output
+        function log(message) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        }
+        
+        // Helper function to send a message to the extension
+        async function sendMessage(action, data = {}) {
+            try {
+                const response = await chrome.runtime.sendMessage({ action, data });
+                log(`Response for ${action}: ${JSON.stringify(response)}`);
+                return response;
+            } catch (error) {
+                log(`Error sending message ${action}: ${error.message}`);
+                throw error;
+            }
+        }
+        
+        // Check authentication
+        document.getElementById('checkAuthButton').addEventListener('click', async () => {
+            try {
+                log('Checking authentication...');
+                const response = await sendMessage('isAuthenticated');
+                log(`User is ${response.data ? 'authenticated' : 'not authenticated'}`);
+            } catch (error) {
+                log(`Error checking authentication: ${error.message}`);
+            }
+        });
+        
+        // Login
+        document.getElementById('loginButton').addEventListener('click', async () => {
+            try {
+                log('Logging in...');
+                const response = await sendMessage('login', {
+                    email: 'test@example.com',
+                    password: 'password123'
+                });
+                log(`Login ${response.success ? 'successful' : 'failed'}`);
+            } catch (error) {
+                log(`Error logging in: ${error.message}`);
+            }
+        });
+        
+        // Logout
+        document.getElementById('logoutButton').addEventListener('click', async () => {
+            try {
+                log('Logging out...');
+                const response = await sendMessage('logout');
+                log(`Logout ${response.success ? 'successful' : 'failed'}`);
+            } catch (error) {
+                log(`Error logging out: ${error.message}`);
+            }
+        });
+        
+        // Capture screenshot
+        document.getElementById('captureButton').addEventListener('click', async () => {
+            try {
+                log('Capturing screenshot...');
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                const response = await sendMessage('captureScreenshot', { tabId: tab.id });
+                log(`Screenshot capture ${response.success ? 'successful' : 'failed'}`);
+            } catch (error) {
+                log(`Error capturing screenshot: ${error.message}`);
+            }
+        });
+        
+        // Toggle capture enabled
+        document.getElementById('toggleCaptureButton').addEventListener('click', async () => {
+            try {
+                log('Toggling capture enabled...');
+                // Get current preferences
+                const response = await chrome.runtime.sendMessage({ action: 'getCurrentUser' });
+                const currentEnabled = response.data?.preferences?.captureEnabled || true;
+                
+                // Toggle capture enabled
+                const updateResponse = await sendMessage('updatePreferences', {
+                    preferences: {
+                        captureEnabled: !currentEnabled
+                    }
+                });
+                
+                log(`Capture enabled set to ${!currentEnabled}`);
+            } catch (error) {
+                log(`Error toggling capture enabled: ${error.message}`);
+            }
+        });
+        
+        // Get history
+        document.getElementById('getHistoryButton').addEventListener('click', async () => {
+            try {
+                log('Getting history...');
+                const response = await chrome.runtime.sendMessage({
+                    action: 'getHistory',
+                    data: { limit: 5 }
+                });
+                log(`Got ${response.data?.items?.length || 0} history items`);
+            } catch (error) {
+                log(`Error getting history: ${error.message}`);
+            }
+        });
+        
+        // Clear history
+        document.getElementById('clearHistoryButton').addEventListener('click', async () => {
+            try {
+                log('Clearing history...');
+                const response = await chrome.runtime.sendMessage({
+                    action: 'clearHistory'
+                });
+                log(`History cleared: ${response.success}`);
+            } catch (error) {
+                log(`Error clearing history: ${error.message}`);
+            }
+        });
+        
+        // Log page load
+        window.addEventListener('load', () => {
+            log('Test page loaded');
+        });
+    </script>
+</body>
+</html>

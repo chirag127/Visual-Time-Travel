@@ -8,7 +8,8 @@
     "activeTab",
     "storage",
     "scripting",
-    "webNavigation"
+    "webNavigation",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "http://*/*",
@@ -33,15 +34,24 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "timeline/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icons/*",
+        "timeline/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "content_security_policy": {
