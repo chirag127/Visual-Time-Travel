@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Time Travel</title>
+  <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Visual Time Travel</h1>
+      <div class="theme-toggle">
+        <input type="checkbox" id="theme-toggle-checkbox">
+        <label for="theme-toggle-checkbox"></label>
+      </div>
+    </header>
+    
+    <!-- Auth Container (shown when not logged in) -->
+    <div id="auth-container">
+      <div class="tabs">
+        <button id="login-tab" class="tab active">Login</button>
+        <button id="register-tab" class="tab">Register</button>
+      </div>
+      
+      <!-- Login Panel -->
+      <div id="login-panel" class="panel active">
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" required>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required>
+          </div>
+          <div id="login-error" class="error"></div>
+          <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+      </div>
+      
+      <!-- Register Panel -->
+      <div id="register-panel" class="panel">
+        <form id="register-form">
+          <div class="form-group">
+            <label for="register-email">Email</label>
+            <input type="email" id="register-email" required>
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password</label>
+            <input type="password" id="register-password" required minlength="8">
+            <small>At least 8 characters with uppercase, lowercase, number, and special character</small>
+          </div>
+          <div class="form-group">
+            <label for="register-confirm-password">Confirm Password</label>
+            <input type="password" id="register-confirm-password" required>
+          </div>
+          <div id="register-error" class="error"></div>
+          <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Main Container (shown when logged in) -->
+    <div id="main-container" style="display: none;">
+      <div class="tabs">
+        <button id="timeline-tab" class="tab active">Timeline</button>
+        <button id="settings-tab" class="tab">Settings</button>
+      </div>
+      
+      <!-- Timeline Panel -->
+      <div id="timeline-panel" class="panel active">
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Search history...">
+          <button id="search-button" class="btn btn-sm">Search</button>
+          <button id="clear-search-button" class="btn btn-sm">Clear</button>
+        </div>
+        
+        <div class="filter-bar">
+          <select id="domain-filter">
+            <option value="">All Domains</option>
+          </select>
+          <button id="clear-history-button" class="btn btn-sm btn-danger">Clear History</button>
+        </div>
+        
+        <div id="timeline-loading" class="loading">Loading...</div>
+        <div id="timeline-error" class="error"></div>
+        <div id="timeline-empty" class="empty" style="display: none;">No history items found</div>
+        
+        <div id="timeline-container" class="timeline-container"></div>
+        
+        <button id="load-more-button" class="btn btn-secondary" style="display: none;">Load More</button>
+        
+        <div class="capture-button-container">
+          <button id="capture-button" class="btn btn-primary">Capture Current Tab</button>
+          <div id="capture-status"></div>
+        </div>
+      </div>
+      
+      <!-- Settings Panel -->
+      <div id="settings-panel" class="panel">
+        <form id="settings-form">
+          <div class="form-group">
+            <label for="capture-enabled">
+              <input type="checkbox" id="capture-enabled">
+              Enable Automatic Screenshot Capture
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <label for="retention-days">History Retention (days)</label>
+            <input type="number" id="retention-days" min="1" max="365" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="show-breadcrumbs">
+              <input type="checkbox" id="show-breadcrumbs">
+              Show Navigation Breadcrumbs
+            </label>
+          </div>
+          
+          <div id="settings-error" class="error"></div>
+          <div id="settings-success" class="success"></div>
+          
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+        
+        <div class="logout-container">
+          <button id="logout-button" class="btn btn-secondary">Logout</button>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <p>&copy; 2023 Visual Time Travel</p>
+    </footer>
+  </div>
+  
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
