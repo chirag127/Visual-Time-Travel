@@ -222,7 +222,15 @@ const loadUserData = async () => {
  */
 const loadDomains = async () => {
     try {
-        domains = await api.history.getUserDomains();
+        // Get domains from API
+        const domainsResponse = await api.history.getUserDomains();
+
+        if (!domainsResponse || !Array.isArray(domainsResponse)) {
+            console.warn("Invalid domains response:", domainsResponse);
+            return;
+        }
+
+        domains = domainsResponse;
 
         // Clear existing options except the first one
         while (domainFilter.options.length > 1) {
@@ -238,7 +246,8 @@ const loadDomains = async () => {
         });
     } catch (error) {
         console.error("Error loading domains:", error);
-        showError("Failed to load domains. Please try again later.");
+        // Re-throw the error so it can be caught by the caller
+        throw error;
     }
 };
 
@@ -271,6 +280,12 @@ const loadHistory = async (reset = false) => {
             }),
         });
 
+        // Validate response
+        if (!result || !result.items || !Array.isArray(result.items)) {
+            console.error("Invalid history response:", result);
+            throw new Error("Invalid response from server");
+        }
+
         // Update state
         if (reset) {
             historyItems = result.items;
@@ -280,7 +295,13 @@ const loadHistory = async (reset = false) => {
             loadedItems += result.items.length;
         }
 
-        totalItems = result.pagination.total;
+        // Validate pagination
+        if (!result.pagination || typeof result.pagination.total !== "number") {
+            console.warn("Invalid pagination data:", result.pagination);
+            totalItems = historyItems.length;
+        } else {
+            totalItems = result.pagination.total;
+        }
 
         // Update pagination
         updatePagination();
@@ -289,7 +310,37 @@ const loadHistory = async (reset = false) => {
         renderTimeline(reset);
     } catch (error) {
         console.error("Error loading history:", error);
-        showError("Failed to load history. Please try again later.");
+
+        // Show a more specific error message
+        if (error.message && error.message.includes("Authentication")) {
+            showError("Authentication failed. Please log in again.");
+
+            // Redirect to login after a short delay
+            setTimeout(() => {
+                window.location.href =
+                    chrome.runtime.getURL("popup/popup.html");
+            }, 3000);
+        } else {
+            showError("Failed to load history. Please try again later.");
+
+            // Show empty state
+            if (timeline.innerHTML.includes("Loading")) {
+                timeline.innerHTML =
+                    '<div class="empty-state"><p>No history items found</p><button id="refreshButton" class="btn btn-secondary">Refresh</button></div>';
+
+                // Re-attach event listener
+                document
+                    .getElementById("refreshButton")
+                    .addEventListener("click", () => {
+                        currentPage = 1;
+                        loadedItems = 0;
+                        loadHistory(true);
+                    });
+            }
+        }
+
+        // Re-throw the error so it can be caught by the caller
+        throw error;
     }
 };
 
@@ -564,16 +615,31 @@ const visitCurrentPage = () => {
  * Show settings modal
  */
 const showSettingsModal = async () => {
-    // Load current preferences
-    const preferences = await storage.preferences.get();
+    try {
+        // Load current preferences
+        const preferences = await storage.preferences.get();
 
-    captureEnabledToggle.checked = preferences.captureEnabled;
-    retentionDaysInput.value = preferences.retentionDays;
-    showBreadcrumbsToggle.checked = preferences.showBreadcrumbs;
-    apiBaseUrlInput.value =
-        preferences.apiBaseUrl || (await api.getApiBaseUrl());
+        captureEnabledToggle.checked = preferences.captureEnabled;
+        retentionDaysInput.value = preferences.retentionDays;
+        showBreadcrumbsToggle.checked = preferences.showBreadcrumbs;
 
-    settingsModal.style.display = "block";
+        // Get API base URL
+        let apiBaseUrl = preferences.apiBaseUrl;
+        if (!apiBaseUrl) {
+            try {
+                apiBaseUrl = await api.getApiBaseUrl();
+            } catch (apiUrlError) {
+                console.warn("Error getting API base URL:", apiUrlError);
+                apiBaseUrl = "https://visual-time-travel.onrender.com/api";
+            }
+        }
+        apiBaseUrlInput.value = apiBaseUrl;
+
+        settingsModal.style.display = "block";
+    } catch (error) {
+        console.error("Error showing settings modal:", error);
+        showError("Failed to load settings. Please try again later.");
+    }
 };
 
 /**

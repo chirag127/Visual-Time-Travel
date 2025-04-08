@@ -12,11 +12,16 @@ const API_CONFIG = {
 
 /**
  * Get the API base URL
- * @returns {string} The API base URL
+ * @returns {Promise<string>} The API base URL
  */
 const getApiBaseUrl = async () => {
-    const { apiBaseUrl } = await chrome.storage.local.get("apiBaseUrl");
-    return apiBaseUrl || API_CONFIG.baseUrl;
+    try {
+        const { apiBaseUrl } = await chrome.storage.local.get("apiBaseUrl");
+        return apiBaseUrl || API_CONFIG.baseUrl;
+    } catch (error) {
+        console.error("Error getting API base URL from storage:", error);
+        return API_CONFIG.baseUrl;
+    }
 };
 
 /**
@@ -82,11 +87,19 @@ const apiRequest = async (endpoint, options = {}) => {
 
     // Add authentication token if required
     if (requiresAuth) {
-        const token = await getAuthToken();
-        if (!token) {
-            throw new Error("Authentication required");
+        try {
+            const token = await getAuthToken();
+            if (!token) {
+                console.warn("Authentication required but no token found");
+                throw new Error(
+                    "Authentication required. Please log in again."
+                );
+            }
+            headers["Authorization"] = `Bearer ${token}`;
+        } catch (authError) {
+            console.error("Error getting auth token:", authError);
+            throw new Error("Authentication failed. Please log in again.");
         }
-        headers["Authorization"] = `Bearer ${token}`;
     }
 
     // Create AbortController for timeout
@@ -94,6 +107,8 @@ const apiRequest = async (endpoint, options = {}) => {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+        console.log(`Making API request to ${url}`);
+
         const response = await fetch(url, {
             method,
             headers,
@@ -104,12 +119,34 @@ const apiRequest = async (endpoint, options = {}) => {
         // Clear timeout
         clearTimeout(timeoutId);
 
-        // Parse response
-        const data = await response.json();
+        // Check if response exists
+        if (!response) {
+            throw new Error("Network error: No response received");
+        }
+
+        // Try to parse response as JSON
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonError) {
+            console.error("Error parsing JSON response:", jsonError);
+            throw new Error(
+                `Failed to parse API response: ${jsonError.message}`
+            );
+        }
 
         // Check if response is successful
         if (!response.ok) {
-            throw new Error(data.message || "API request failed");
+            // Handle authentication errors
+            if (response.status === 401) {
+                console.error("Authentication error:", data);
+                throw new Error("Authentication failed. Please log in again.");
+            }
+
+            throw new Error(
+                data.message ||
+                    `API request failed with status ${response.status}`
+            );
         }
 
         return data;
@@ -119,7 +156,14 @@ const apiRequest = async (endpoint, options = {}) => {
 
         // Handle timeout
         if (error.name === "AbortError") {
-            throw new Error("Request timeout");
+            throw new Error(
+                `Request timed out after ${timeout / 1000} seconds`
+            );
+        }
+
+        // Handle network errors
+        if (error.message && error.message.includes("NetworkError")) {
+            throw new Error("Network error: Unable to connect to the server");
         }
 
         // Rethrow error
@@ -265,20 +309,20 @@ const history = {
 
     /**
      * Delete a history item - DISABLED
-     * @param {string} id - History item ID
+     * @param {string} _id - History item ID (unused)
      * @returns {Promise<Object>} Result indicating deletion is disabled
      */
-    deleteHistoryItem: async (id) => {
+    deleteHistoryItem: async (_id) => {
         console.log("History deletion is disabled");
         return { success: false, message: "History deletion is disabled" };
     },
 
     /**
      * Clear user history - DISABLED
-     * @param {Object} [options] - Clear options
+     * @param {Object} [_options] - Clear options (unused)
      * @returns {Promise<Object>} Result indicating deletion is disabled
      */
-    clearUserHistory: async (options = {}) => {
+    clearUserHistory: async (_options = {}) => {
         console.log("History deletion is disabled");
         return { success: false, message: "History deletion is disabled" };
     },
