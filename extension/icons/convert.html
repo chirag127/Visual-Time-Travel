@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG to PNG Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .icon-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4a6cf7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3a5ce7;
+        }
+        .instructions {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SVG to PNG Converter for Visual Time Travel Icons</h1>
+    
+    <div class="instructions">
+        <h2>Instructions:</h2>
+        <ol>
+            <li>Click the "Load SVG" button to load the SVG icon</li>
+            <li>The SVG will be rendered to different size canvases</li>
+            <li>Right-click on each canvas and select "Save image as..." to save the PNG files</li>
+            <li>Save them as icon16.png, icon48.png, and icon128.png in the icons folder</li>
+        </ol>
+    </div>
+    
+    <button id="loadSvg">Load SVG</button>
+    
+    <div class="container">
+        <div class="icon-container">
+            <div>
+                <h3>16x16 Icon</h3>
+                <canvas id="canvas16" width="16" height="16"></canvas>
+            </div>
+            <button id="download16">Download icon16.png</button>
+        </div>
+        
+        <div class="icon-container">
+            <div>
+                <h3>48x48 Icon</h3>
+                <canvas id="canvas48" width="48" height="48"></canvas>
+            </div>
+            <button id="download48">Download icon48.png</button>
+        </div>
+        
+        <div class="icon-container">
+            <div>
+                <h3>128x128 Icon</h3>
+                <canvas id="canvas128" width="128" height="128"></canvas>
+            </div>
+            <button id="download128">Download icon128.png</button>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('loadSvg').addEventListener('click', loadSvg);
+        document.getElementById('download16').addEventListener('click', () => downloadPng(16));
+        document.getElementById('download48').addEventListener('click', () => downloadPng(48));
+        document.getElementById('download128').addEventListener('click', () => downloadPng(128));
+        
+        function loadSvg() {
+            fetch('icon.svg')
+                .then(response => response.text())
+                .then(svgData => {
+                    renderSvgToCanvas(svgData, 16);
+                    renderSvgToCanvas(svgData, 48);
+                    renderSvgToCanvas(svgData, 128);
+                })
+                .catch(error => console.error('Error loading SVG:', error));
+        }
+        
+        function renderSvgToCanvas(svgData, size) {
+            const canvas = document.getElementById(`canvas${size}`);
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Create image from SVG
+            const img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, size, size);
+            };
+            
+            // Set image source to SVG data URL
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(svgBlob);
+            img.src = url;
+        }
+        
+        function downloadPng(size) {
+            const canvas = document.getElementById(`canvas${size}`);
+            const link = document.createElement('a');
+            link.download = `icon${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>
