@@ -4,9 +4,9 @@
  * @module background
  */
 
-import api from './utils/api.js';
-import storage from './utils/storage.js';
-import screenshot from './utils/screenshot.js';
+import api from "./utils/api.js";
+import storage from "./utils/storage.js";
+import screenshot from "./utils/screenshot.js";
 
 // Track the last active tab to avoid duplicate captures
 let lastActiveTabId = null;
@@ -59,48 +59,49 @@ const initialize = async () => {
  */
 const handleTabActivated = async (activeInfo) => {
     try {
-        console.log('Tab activated event:', activeInfo);
-        
+        console.log("Tab activated event:", activeInfo);
+
         // Skip if we're already processing a tab
         if (processingTab) {
-            console.log('Already processing a tab, skipping');
+            console.log("Already processing a tab, skipping");
             return;
         }
         processingTab = true;
-        
+
         // Get the active tab
         const [tab] = await chrome.tabs.query({
             active: true,
             currentWindow: true,
         });
-        
+
         // Skip if no tab
         if (!tab) {
-            console.log('No active tab found');
+            console.log("No active tab found");
             processingTab = false;
             return;
         }
-        
-        console.log('Active tab:', tab.id, tab.url);
-        
+
+        console.log("Active tab:", tab.id, tab.url);
+
         // Skip if same as last active tab
         if (tab.id === lastActiveTabId && tab.url === lastActiveTabUrl) {
-            console.log('Same tab as last active tab, skipping');
+            console.log("Same tab as last active tab, skipping");
             processingTab = false;
             return;
         }
-        
+
         // Update last active tab
         lastActiveTabId = tab.id;
         lastActiveTabUrl = tab.url;
-        
+
         // Process the tab change
-        console.log('Processing tab change for:', tab.url);
-        await screenshot.processTabChange(tab);
-        
+        console.log("Processing tab change for:", tab.url);
+        const tabResult = await screenshot.processTabChange(tab);
+        console.log("Tab change processing result:", tabResult);
+
         processingTab = false;
     } catch (error) {
-        console.error('Error handling tab activated:', error);
+        console.error("Error handling tab activated:", error);
         processingTab = false;
     }
 };
@@ -113,46 +114,47 @@ const handleTabActivated = async (activeInfo) => {
  */
 const handleTabUpdated = async (tabId, changeInfo, tab) => {
     try {
-        console.log('Tab updated event:', tabId, changeInfo, tab.url);
-        
+        console.log("Tab updated event:", tabId, changeInfo, tab.url);
+
         // Only process if the tab is complete and has a URL
-        if (changeInfo.status !== 'complete') {
-            console.log('Tab not complete yet, skipping');
+        if (changeInfo.status !== "complete") {
+            console.log("Tab not complete yet, skipping");
             return;
         }
-        
+
         // Skip if we're already processing a tab
         if (processingTab) {
-            console.log('Already processing a tab, skipping');
+            console.log("Already processing a tab, skipping");
             return;
         }
         processingTab = true;
-        
+
         // Skip if not the active tab
         if (!tab.active) {
-            console.log('Not the active tab, skipping');
+            console.log("Not the active tab, skipping");
             processingTab = false;
             return;
         }
-        
+
         // Skip if same as last active tab URL
         if (tab.url === lastActiveTabUrl) {
-            console.log('Same URL as last active tab, skipping');
+            console.log("Same URL as last active tab, skipping");
             processingTab = false;
             return;
         }
-        
+
         // Update last active tab
         lastActiveTabId = tab.id;
         lastActiveTabUrl = tab.url;
-        
+
         // Process the tab change
-        console.log('Processing tab change for:', tab.url);
-        await screenshot.processTabChange(tab);
-        
+        console.log("Processing tab change for:", tab.url);
+        const result = await screenshot.processTabChange(tab);
+        console.log("Tab change processing result:", result);
+
         processingTab = false;
     } catch (error) {
-        console.error('Error handling tab updated:', error);
+        console.error("Error handling tab updated:", error);
         processingTab = false;
     }
 };
@@ -165,54 +167,61 @@ const handleTabUpdated = async (tabId, changeInfo, tab) => {
  */
 const handleMessage = async (message, sender, sendResponse) => {
     try {
-        console.log('Received message:', message);
-        
+        console.log("Received message:", message);
+
         switch (message.action) {
-            case 'login':
+            case "login":
                 const { email, password } = message.data;
                 const loginResult = await api.auth.login(email, password);
                 sendResponse({ success: true, data: loginResult });
                 break;
-                
-            case 'logout':
+
+            case "logout":
                 await api.auth.logout();
                 sendResponse({ success: true });
                 break;
-                
-            case 'getCurrentUser':
+
+            case "getCurrentUser":
                 const user = await api.auth.getCurrentUser();
                 sendResponse({ success: true, data: user });
                 break;
-                
-            case 'updatePreferences':
+
+            case "updatePreferences":
                 const { preferences } = message.data;
-                const updatedUser = await api.auth.updatePreferences(preferences);
-                
+                const updatedUser = await api.auth.updatePreferences(
+                    preferences
+                );
+
                 // Also update local preferences
                 await storage.preferences.set(preferences);
-                
+
                 sendResponse({ success: true, data: updatedUser });
                 break;
-                
-            case 'captureScreenshot':
+
+            case "captureScreenshot":
                 const tab = await chrome.tabs.get(message.data.tabId);
-                await screenshot.processTabChange(tab);
-                sendResponse({ success: true });
+                console.log(
+                    "Manual screenshot capture requested for tab:",
+                    tab.id,
+                    tab.url
+                );
+                const result = await screenshot.processTabChange(tab);
+                sendResponse(result);
                 break;
-                
-            case 'isAuthenticated':
+
+            case "isAuthenticated":
                 const isAuth = await api.isAuthenticated();
                 sendResponse({ success: true, data: isAuth });
                 break;
-                
+
             default:
-                sendResponse({ success: false, error: 'Unknown action' });
+                sendResponse({ success: false, error: "Unknown action" });
         }
     } catch (error) {
-        console.error('Error handling message:', error);
+        console.error("Error handling message:", error);
         sendResponse({ success: false, error: error.message });
     }
-    
+
     return true; // Keep the message channel open for async response
 };
 
