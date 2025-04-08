@@ -149,10 +149,7 @@
             </div>
           </div>
 
-          <div class="setting-item">
-            <label for="retentionDays">History Retention (days)</label>
-            <input type="number" id="retentionDays" min="1" max="365" value="30">
-          </div>
+          <!-- History retention setting removed to ensure history is never deleted -->
 
           <div class="setting-item">
             <label for="showBreadcrumbsToggle">Show Navigation Breadcrumbs</label>
@@ -176,7 +173,6 @@
 
         <div class="settings-actions">
           <button id="saveSettingsButton" class="btn btn-primary">Save Settings</button>
-          <button id="clearHistoryButton" class="btn btn-danger">Clear History</button>
           <button id="logoutButton" class="btn btn-secondary">Logout</button>
         </div>
       </div>

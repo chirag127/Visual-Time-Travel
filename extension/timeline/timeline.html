@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visual Time Travel - Timeline</title>
   <link rel="stylesheet" href="timeline.css">
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -61,7 +63,6 @@
     <footer>
       <p>&copy; 2025 Visual Time Travel</p>
       <div class="footer-links">
-        <button id="clearHistoryButton" class="btn btn-link">Clear History</button>
         <button id="settingsButton" class="btn btn-link">Settings</button>
       </div>
     </footer>
@@ -86,12 +87,9 @@
                 </label>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <label for="retentionDays">History Retention (days)</label>
-              <input type="number" id="retentionDays" min="1" max="365" value="30">
-            </div>
-            
+
+            <!-- History retention setting removed to ensure history is never deleted -->
+
             <div class="setting-item">
               <label for="showBreadcrumbsToggle">Show Navigation Breadcrumbs</label>
               <div class="toggle">
@@ -103,7 +101,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="settings-group">
             <h3>API Settings</h3>
             <div class="setting-item">
@@ -137,7 +135,6 @@
         </div>
         <div class="modal-footer">
           <button id="visitPageButton" class="btn btn-primary">Visit Page</button>
-          <button id="deleteItemButton" class="btn btn-danger">Delete</button>
         </div>
       </div>
     </div>
@@ -162,4 +159,5 @@
 
   <script type="module" src="timeline.js"></script>
 </body>
+
 </html>

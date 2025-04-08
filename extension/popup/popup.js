@@ -49,7 +49,6 @@ const retentionDaysInput = document.getElementById("retentionDays");
 const showBreadcrumbsToggle = document.getElementById("showBreadcrumbsToggle");
 const apiBaseUrlInput = document.getElementById("apiBaseUrl");
 const saveSettingsButton = document.getElementById("saveSettingsButton");
-const clearHistoryButton = document.getElementById("clearHistoryButton");
 const logoutButton = document.getElementById("logoutButton");
 const darkModeToggle = document.getElementById("darkModeToggle");
 
@@ -163,7 +162,6 @@ const setupEventListeners = () => {
 
     // Settings
     saveSettingsButton.addEventListener("click", saveSettings);
-    clearHistoryButton.addEventListener("click", confirmClearHistory);
     logoutButton.addEventListener("click", handleLogout);
 
     // Dark mode toggle
@@ -411,12 +409,6 @@ const renderHistoryItems = (items) => {
             <line x1="10" y1="14" x2="21" y2="3"></line>
           </svg>
         </button>
-        <button class="btn btn-icon delete-btn" data-id="${item._id}" title="Delete">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
       </div>
     `;
 
@@ -427,56 +419,10 @@ const renderHistoryItems = (items) => {
         visitBtn.addEventListener("click", () => {
             chrome.tabs.create({ url: item.url });
         });
-
-        const deleteBtn = historyItem.querySelector(".delete-btn");
-        deleteBtn.addEventListener("click", () => {
-            confirmDeleteHistoryItem(item._id);
-        });
     });
 };
 
-/**
- * Confirm delete history item
- * @param {string} id - History item ID
- */
-const confirmDeleteHistoryItem = async (id) => {
-    if (confirm("Are you sure you want to delete this history item?")) {
-        try {
-            await api.history.deleteHistoryItem(id);
-            loadHistory();
-        } catch (error) {
-            console.error("Error deleting history item:", error);
-            alert("Failed to delete history item");
-        }
-    }
-};
-
-/**
- * Confirm clear history
- */
-const confirmClearHistory = () => {
-    if (
-        confirm(
-            "Are you sure you want to clear your history? This cannot be undone."
-        )
-    ) {
-        clearHistory();
-    }
-};
-
-/**
- * Clear history
- */
-const clearHistory = async () => {
-    try {
-        await api.history.clearUserHistory();
-        loadHistory();
-        loadDomains();
-    } catch (error) {
-        console.error("Error clearing history:", error);
-        alert("Failed to clear history");
-    }
-};
+// History deletion functions have been removed to ensure history is never deleted
 
 /**
  * Save settings
