@@ -4,28 +4,26 @@
  * @module utils/errorHandler
  */
 
-const logger = require('./logger');
-
 /**
  * Custom API Error class
  * @class ApiError
  * @extends Error
  */
 class ApiError extends Error {
-  /**
-   * Create an API error
-   * @param {string} message - Error message
-   * @param {number} statusCode - HTTP status code
-   * @param {boolean} isOperational - Whether this is an operational error
-   */
-  constructor(message, statusCode, isOperational = true) {
-    super(message);
-    this.statusCode = statusCode;
-    this.isOperational = isOperational;
-    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
-    
-    Error.captureStackTrace(this, this.constructor);
-  }
+    /**
+     * Create an API error
+     * @param {string} message - Error message
+     * @param {number} statusCode - HTTP status code
+     * @param {boolean} isOperational - Whether this is an operational error
+     */
+    constructor(message, statusCode, isOperational = true) {
+        super(message);
+        this.statusCode = statusCode;
+        this.isOperational = isOperational;
+        this.status = `${statusCode}`.startsWith("4") ? "fail" : "error";
+
+        Error.captureStackTrace(this, this.constructor);
+    }
 }
 
 /**
@@ -33,8 +31,8 @@ class ApiError extends Error {
  * @param {string} message - Error message
  * @returns {ApiError} The created error
  */
-const badRequest = (message = 'Bad request') => {
-  return new ApiError(message, 400);
+const badRequest = (message = "Bad request") => {
+    return new ApiError(message, 400);
 };
 
 /**
@@ -42,8 +40,8 @@ const badRequest = (message = 'Bad request') => {
  * @param {string} message - Error message
  * @returns {ApiError} The created error
  */
-const unauthorized = (message = 'Unauthorized') => {
-  return new ApiError(message, 401);
+const unauthorized = (message = "Unauthorized") => {
+    return new ApiError(message, 401);
 };
 
 /**
@@ -51,8 +49,8 @@ const unauthorized = (message = 'Unauthorized') => {
  * @param {string} message - Error message
  * @returns {ApiError} The created error
  */
-const forbidden = (message = 'Forbidden') => {
-  return new ApiError(message, 403);
+const forbidden = (message = "Forbidden") => {
+    return new ApiError(message, 403);
 };
 
 /**
@@ -60,8 +58,8 @@ const forbidden = (message = 'Forbidden') => {
  * @param {string} message - Error message
  * @returns {ApiError} The created error
  */
-const notFound = (message = 'Resource not found') => {
-  return new ApiError(message, 404);
+const notFound = (message = "Resource not found") => {
+    return new ApiError(message, 404);
 };
 
 /**
@@ -69,8 +67,8 @@ const notFound = (message = 'Resource not found') => {
  * @param {string} message - Error message
  * @returns {ApiError} The created error
  */
-const conflict = (message = 'Conflict') => {
-  return new ApiError(message, 409);
+const conflict = (message = "Conflict") => {
+    return new ApiError(message, 409);
 };
 
 /**
@@ -78,8 +76,8 @@ const conflict = (message = 'Conflict') => {
  * @param {string} message - Error message
  * @returns {ApiError} The created error
  */
-const internal = (message = 'Internal server error') => {
-  return new ApiError(message, 500, false);
+const internal = (message = "Internal server error") => {
+    return new ApiError(message, 500, false);
 };
 
 /**
@@ -88,18 +86,18 @@ const internal = (message = 'Internal server error') => {
  * @returns {Function} Express middleware function
  */
 const asyncHandler = (fn) => {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
+    return (req, res, next) => {
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
 };
 
 module.exports = {
-  ApiError,
-  badRequest,
-  unauthorized,
-  forbidden,
-  notFound,
-  conflict,
-  internal,
-  asyncHandler
+    ApiError,
+    badRequest,
+    unauthorized,
+    forbidden,
+    notFound,
+    conflict,
+    internal,
+    asyncHandler,
 };

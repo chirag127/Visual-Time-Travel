@@ -4,10 +4,9 @@
  * @module controllers/historyController
  */
 
-const historyService = require('../services/historyService');
-const { validateScreenshotUpload } = require('../utils/validators');
-const { asyncHandler } = require('../utils/errorHandler');
-const logger = require('../utils/logger');
+const historyService = require("../services/historyService");
+const { validateScreenshotUpload } = require("../utils/validators");
+const { asyncHandler } = require("../utils/errorHandler");
 
 /**
  * Upload a screenshot and add to history
@@ -17,30 +16,30 @@ const logger = require('../utils/logger');
  * @returns {Object} Created history item
  */
 const uploadScreenshot = asyncHandler(async (req, res) => {
-  // Validate input
-  validateScreenshotUpload(req.body);
-  
-  // Get user from request (set by auth middleware)
-  const userId = req.user.id;
-  
-  // Get data from request body
-  const { imageBase64, url, title, favicon } = req.body;
-  
-  // Add history item
-  const result = await historyService.addHistoryItem(userId, {
-    imageBase64,
-    url,
-    title,
-    favicon
-  });
-  
-  logger.info(`Screenshot uploaded for URL: ${url}`);
-  
-  // Send response
-  res.status(201).json({
-    success: true,
-    data: result
-  });
+    // Validate input
+    validateScreenshotUpload(req.body);
+
+    // Get user from request (set by auth middleware)
+    const userId = req.user.id;
+
+    // Get data from request body
+    const { imageBase64, url, title, favicon } = req.body;
+
+    // Add history item
+    const result = await historyService.addHistoryItem(userId, {
+        imageBase64,
+        url,
+        title,
+        favicon,
+    });
+
+    console.log(`Screenshot uploaded for URL: ${url}`);
+
+    // Send response
+    res.status(201).json({
+        success: true,
+        data: result,
+    });
 });
 
 /**
@@ -51,27 +50,27 @@ const uploadScreenshot = asyncHandler(async (req, res) => {
  * @returns {Object} History items and pagination info
  */
 const getUserHistory = asyncHandler(async (req, res) => {
-  // Get user from request (set by auth middleware)
-  const userId = req.user.id;
-  
-  // Get query parameters
-  const { limit, page, domain, search, sortBy, sortOrder } = req.query;
-  
-  // Get history
-  const result = await historyService.getUserHistory(userId, {
-    limit,
-    page,
-    domain,
-    search,
-    sortBy,
-    sortOrder
-  });
-  
-  // Send response
-  res.status(200).json({
-    success: true,
-    data: result
-  });
+    // Get user from request (set by auth middleware)
+    const userId = req.user.id;
+
+    // Get query parameters
+    const { limit, page, domain, search, sortBy, sortOrder } = req.query;
+
+    // Get history
+    const result = await historyService.getUserHistory(userId, {
+        limit,
+        page,
+        domain,
+        search,
+        sortBy,
+        sortOrder,
+    });
+
+    // Send response
+    res.status(200).json({
+        success: true,
+        data: result,
+    });
 });
 
 /**
@@ -82,17 +81,17 @@ const getUserHistory = asyncHandler(async (req, res) => {
  * @returns {Object} List of domains with counts
  */
 const getUserDomains = asyncHandler(async (req, res) => {
-  // Get user from request (set by auth middleware)
-  const userId = req.user.id;
-  
-  // Get domains
-  const domains = await historyService.getUserDomains(userId);
-  
-  // Send response
-  res.status(200).json({
-    success: true,
-    data: domains
-  });
+    // Get user from request (set by auth middleware)
+    const userId = req.user.id;
+
+    // Get domains
+    const domains = await historyService.getUserDomains(userId);
+
+    // Send response
+    res.status(200).json({
+        success: true,
+        data: domains,
+    });
 });
 
 /**
@@ -103,22 +102,25 @@ const getUserDomains = asyncHandler(async (req, res) => {
  * @returns {Object} Deletion result
  */
 const deleteHistoryItem = asyncHandler(async (req, res) => {
-  // Get user from request (set by auth middleware)
-  const userId = req.user.id;
-  
-  // Get history item ID from request parameters
-  const historyItemId = req.params.id;
-  
-  // Delete history item
-  const result = await historyService.deleteHistoryItem(userId, historyItemId);
-  
-  logger.info(`History item deleted: ${historyItemId}`);
-  
-  // Send response
-  res.status(200).json({
-    success: true,
-    data: result
-  });
+    // Get user from request (set by auth middleware)
+    const userId = req.user.id;
+
+    // Get history item ID from request parameters
+    const historyItemId = req.params.id;
+
+    // Delete history item
+    const result = await historyService.deleteHistoryItem(
+        userId,
+        historyItemId
+    );
+
+    console.log(`History item deleted: ${historyItemId}`);
+
+    // Send response
+    res.status(200).json({
+        success: true,
+        data: result,
+    });
 });
 
 /**
@@ -129,34 +131,34 @@ const deleteHistoryItem = asyncHandler(async (req, res) => {
  * @returns {Object} Deletion result
  */
 const clearUserHistory = asyncHandler(async (req, res) => {
-  // Get user from request (set by auth middleware)
-  const userId = req.user.id;
-  
-  // Get query parameters
-  const { domain, before } = req.query;
-  
-  // Parse before date if provided
-  const beforeDate = before ? new Date(before) : null;
-  
-  // Clear history
-  const result = await historyService.clearUserHistory(userId, {
-    domain,
-    before: beforeDate
-  });
-  
-  logger.info(`History cleared for user: ${req.user.email}`);
-  
-  // Send response
-  res.status(200).json({
-    success: true,
-    data: result
-  });
+    // Get user from request (set by auth middleware)
+    const userId = req.user.id;
+
+    // Get query parameters
+    const { domain, before } = req.query;
+
+    // Parse before date if provided
+    const beforeDate = before ? new Date(before) : null;
+
+    // Clear history
+    const result = await historyService.clearUserHistory(userId, {
+        domain,
+        before: beforeDate,
+    });
+
+    console.log(`History cleared for user: ${req.user.email}`);
+
+    // Send response
+    res.status(200).json({
+        success: true,
+        data: result,
+    });
 });
 
 module.exports = {
-  uploadScreenshot,
-  getUserHistory,
-  getUserDomains,
-  deleteHistoryItem,
-  clearUserHistory
+    uploadScreenshot,
+    getUserHistory,
+    getUserDomains,
+    deleteHistoryItem,
+    clearUserHistory,
 };

@@ -9,7 +9,6 @@ const History = require("../models/historyModel");
 const User = require("../models/userModel");
 const { uploadToFreeImageHost } = require("./imageUploadService");
 const { notFound, badRequest } = require("../utils/errorHandler");
-const logger = require("../utils/logger");
 
 /**
  * Add a history item
@@ -34,7 +33,7 @@ const addHistoryItem = async (userId, data) => {
 
         // Check if screenshot capture is enabled for this user
         if (!user.preferences.captureEnabled) {
-            logger.debug(`Screenshot capture disabled for user ${userId}`);
+            console.debug(`Screenshot capture disabled for user ${userId}`);
             return { message: "Screenshot capture is disabled" };
         }
 
@@ -61,12 +60,12 @@ const addHistoryItem = async (userId, data) => {
             // Run cleanup in the background
             History.deleteOlderThan(userId, retentionDays)
                 .then((result) => {
-                    logger.debug(
+                    console.debug(
                         `Deleted ${result.deletedCount} old history items for user ${userId}`
                     );
                 })
                 .catch((error) => {
-                    logger.error(
+                    console.error(
                         `Error cleaning up old history items: ${error.message}`
                     );
                 });
@@ -80,7 +79,7 @@ const addHistoryItem = async (userId, data) => {
         }
 
         // Log the error
-        logger.error("Error adding history item:", error);
+        console.error("Error adding history item:", error);
 
         // Handle invalid ObjectId
         if (error.name === "CastError") {
@@ -172,7 +171,7 @@ const getUserHistory = async (userId, options = {}) => {
         }
 
         // Log the error
-        logger.error("Error getting user history:", error);
+        console.error("Error getting user history:", error);
 
         // Handle invalid ObjectId
         if (error.name === "CastError") {
@@ -200,7 +199,7 @@ const getUserDomains = async (userId) => {
             { $project: { domain: "$_id", count: 1, _id: 0 } },
         ]);
 
-        logger.debug(`Found ${domains.length} domains for user ${userId}`);
+        console.debug(`Found ${domains.length} domains for user ${userId}`);
 
         return domains;
     } catch (error) {
@@ -210,7 +209,7 @@ const getUserDomains = async (userId) => {
         }
 
         // Log the error
-        logger.error("Error getting user domains:", error);
+        console.error("Error getting user domains:", error);
 
         // Handle invalid ObjectId
         if (error.name === "CastError") {
@@ -249,7 +248,7 @@ const deleteHistoryItem = async (userId, historyItemId) => {
         }
 
         // Log the error
-        logger.error("Error deleting history item:", error);
+        console.error("Error deleting history item:", error);
 
         // Handle invalid ObjectId
         if (error.name === "CastError") {
@@ -298,7 +297,7 @@ const clearUserHistory = async (userId, options = {}) => {
         }
 
         // Log the error
-        logger.error("Error clearing user history:", error);
+        console.error("Error clearing user history:", error);
 
         // Handle invalid ObjectId
         if (error.name === "CastError") {

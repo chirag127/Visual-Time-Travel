@@ -44,22 +44,23 @@ visual-time-travel/
 ├── extension/               # Browser extension
 │   ├── manifest.json        # Extension manifest
 │   ├── background.js        # Background script for tab detection
-│   ├── content.js           # Content script for page interactions
-│   ├── popup.html           # Popup UI
-│   ├── popup.js             # Popup script
-│   ├── components/          # UI components
-│   │   ├── login.js         # Login component
-│   │   ├── settings.js      # Settings component
-│   │   └── timeline.js      # Timeline component
+│   ├── content/             # Content scripts
+│   │   └── content.js       # Content script for page interactions
+│   ├── popup/               # Popup UI
+│   │   ├── popup.html       # Popup HTML
+│   │   ├── popup.css        # Popup styles
+│   │   └── popup.js         # Popup script
+│   ├── timeline/            # Timeline UI
+│   │   ├── timeline.html    # Timeline HTML
+│   │   ├── timeline.css     # Timeline styles
+│   │   └── timeline.js      # Timeline script
 │   ├── utils/               # Utility functions
 │   │   ├── api.js           # API calls
-│   │   ├── auth.js          # Authentication
 │   │   ├── storage.js       # Browser storage
 │   │   └── screenshot.js    # Screenshot capture
-│   ├── styles/              # CSS styles
-│   │   └── popup.css        # Popup styles
 │   └── icons/               # Extension icons
 │       ├── icon16.png       # 16x16 icon
+│       ├── icon32.png       # 32x32 icon
 │       ├── icon48.png       # 48x48 icon
 │       └── icon128.png      # 128x128 icon
 │
@@ -89,6 +90,7 @@ visual-time-travel/
 │       ├── logger.js        # Logging
 │       └── validators.js    # Input validation
 │
+├── icons/                   # Project icons
 └── README.md                # Project documentation
 ```
 
@@ -131,12 +133,7 @@ visual-time-travel/
 
 ### Extension Setup
 
-1. Install extension dependencies:
-
-    ```
-    cd extension
-    npm install
-    ```
+1. The extension doesn't require any additional dependencies as it uses vanilla JavaScript.
 
 2. Load the extension in your browser:
 
