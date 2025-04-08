@@ -6,7 +6,7 @@
 
 // Default API configuration
 const API_CONFIG = {
-    baseUrl: "http://localhost:5000/api",
+    baseUrl: "https://visual-time-travel.onrender.com/api",
     timeout: 10000, // 10 seconds
 };
 

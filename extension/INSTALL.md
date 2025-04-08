@@ -4,8 +4,8 @@ This guide will help you install and set up the Visual Time Travel browser exten
 
 ## Prerequisites
 
-- Chrome, Edge, or Firefox browser
-- Backend server running (see main README.md for backend setup)
+-   Chrome, Edge, or Firefox browser
+-   Backend server running (see main README.md for backend setup)
 
 ## Installation Steps
 
@@ -31,10 +31,10 @@ This guide will help you install and set up the Visual Time Travel browser exten
 1. Click on the Visual Time Travel icon in your browser toolbar
 2. Register a new account or log in with your existing account
 3. In the Settings tab, configure the following:
-   - API Base URL: Set this to your backend server URL (e.g., `http://localhost:5000/api`)
-   - Screenshot Capture: Enable/disable automatic screenshot capture
-   - History Retention: Set how long to keep your browsing history (in days)
-   - Show Breadcrumbs: Enable/disable navigation breadcrumbs
+    - API Base URL: Set this to your backend server URL (e.g., `https://visual-time-travel.onrender.com/api`)
+    - Screenshot Capture: Enable/disable automatic screenshot capture
+    - History Retention: Set how long to keep your browsing history (in days)
+    - Show Breadcrumbs: Enable/disable navigation breadcrumbs
 4. Click "Save Settings" to apply your changes
 
 ## Usage
@@ -76,18 +76,18 @@ You can test the extension functionality using the built-in test script:
 1. Open the browser console (F12 or Ctrl+Shift+J)
 2. Navigate to the "Console" tab
 3. Run the following command to load the test script:
-   ```javascript
-   fetch(chrome.runtime.getURL('tests/test.js'))
-     .then(response => response.text())
-     .then(text => eval(text));
-   ```
+    ```javascript
+    fetch(chrome.runtime.getURL("tests/test.js"))
+        .then((response) => response.text())
+        .then((text) => eval(text));
+    ```
 4. Run the tests using the following commands:
-   ```javascript
-   visualTimeTravel.testAPI();
-   visualTimeTravel.testScreenshot();
-   visualTimeTravel.testStorage();
-   visualTimeTravel.runAllTests();
-   ```
+    ```javascript
+    visualTimeTravel.testAPI();
+    visualTimeTravel.testScreenshot();
+    visualTimeTravel.testStorage();
+    visualTimeTravel.runAllTests();
+    ```
 
 ## Uninstallation
 
