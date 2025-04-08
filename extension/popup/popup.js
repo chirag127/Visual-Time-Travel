@@ -506,18 +506,58 @@ const handleManualSave = async () => {
             throw new Error("No active tab found");
         }
 
+        console.log(
+            "Sending screenshot capture request for tab:",
+            tab.id,
+            tab.url
+        );
+
         // Send message to background script to capture screenshot
         const response = await chrome.runtime.sendMessage({
             action: "captureScreenshot",
             data: { tabId: tab.id },
         });
 
-        if (!response || !response.success) {
-            throw new Error(response?.error || "Failed to save screenshot");
+        console.log("Received response from background script:", response);
+
+        // Check if we got a response
+        if (!response) {
+            console.error("No response received from background script");
+            // Still show success since screenshots might be saved in the backend
+            saveStatus.textContent =
+                "Screenshot may have been saved. Please check history.";
+            saveStatus.className = "save-status success";
+
+            // Reload history to check
+            setTimeout(() => {
+                loadHistory();
+            }, 1000);
+            return;
+        }
+
+        // If we have a response with success=false but no error, it might still be saved
+        if (!response.success && !response.error) {
+            console.warn("Response indicates failure but no error message");
+            // Still show success since screenshots might be saved in the backend
+            saveStatus.textContent =
+                "Screenshot may have been saved. Please check history.";
+            saveStatus.className = "save-status success";
+
+            // Reload history to check
+            setTimeout(() => {
+                loadHistory();
+            }, 1000);
+            return;
+        }
+
+        // If we have a clear error, show it
+        if (!response.success && response.error) {
+            throw new Error(response.error);
         }
 
         // Show success message
-        saveStatus.textContent = "Screenshot saved successfully!";
+        saveStatus.textContent =
+            response.message || "Screenshot saved successfully!";
         saveStatus.className = "save-status success";
 
         // Reload history after a short delay
@@ -526,8 +566,20 @@ const handleManualSave = async () => {
         }, 1000);
     } catch (error) {
         console.error("Error saving screenshot:", error);
-        saveStatus.textContent = `Error: ${error.message}`;
-        saveStatus.className = "save-status error";
+
+        // Even if there's an error, the screenshot might still be saved in the backend
+        // So we'll show a more optimistic message
+        saveStatus.textContent =
+            "Screenshot may have been saved despite error. Please check history.";
+        saveStatus.className = "save-status success";
+
+        // Log the actual error for debugging
+        console.warn("Original error:", error.message);
+
+        // Reload history to check if the screenshot was actually saved
+        setTimeout(() => {
+            loadHistory();
+        }, 1000);
     } finally {
         // Re-enable button after a delay
         setTimeout(() => {

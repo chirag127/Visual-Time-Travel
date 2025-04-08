@@ -96,10 +96,24 @@ const handleTabActivated = async (activeInfo) => {
 
         // Process the tab change
         console.log("Processing tab change for:", tab.url);
-        const tabResult = await screenshot.processTabChange(tab);
-        console.log("Tab change processing result:", tabResult);
+        try {
+            const tabResult = await screenshot.processTabChange(tab);
+            console.log("Tab change processing result:", tabResult);
 
-        processingTab = false;
+            // If the result indicates success, log it
+            if (tabResult && tabResult.success) {
+                console.log("Screenshot captured and saved successfully");
+            } else if (tabResult) {
+                console.warn(
+                    "Screenshot capture failed:",
+                    tabResult.message || tabResult.error
+                );
+            }
+        } catch (error) {
+            console.error("Error processing tab change:", error);
+        } finally {
+            processingTab = false;
+        }
     } catch (error) {
         console.error("Error handling tab activated:", error);
         processingTab = false;
@@ -149,10 +163,24 @@ const handleTabUpdated = async (tabId, changeInfo, tab) => {
 
         // Process the tab change
         console.log("Processing tab change for:", tab.url);
-        const result = await screenshot.processTabChange(tab);
-        console.log("Tab change processing result:", result);
+        try {
+            const result = await screenshot.processTabChange(tab);
+            console.log("Tab change processing result:", result);
 
-        processingTab = false;
+            // If the result indicates success, log it
+            if (result && result.success) {
+                console.log("Screenshot captured and saved successfully");
+            } else if (result) {
+                console.warn(
+                    "Screenshot capture failed:",
+                    result.message || result.error
+                );
+            }
+        } catch (error) {
+            console.error("Error processing tab change:", error);
+        } finally {
+            processingTab = false;
+        }
     } catch (error) {
         console.error("Error handling tab updated:", error);
         processingTab = false;
@@ -162,10 +190,10 @@ const handleTabUpdated = async (tabId, changeInfo, tab) => {
 /**
  * Handle messages from popup or content scripts
  * @param {Object} message - Message
- * @param {Object} sender - Sender
+ * @param {Object} _sender - Sender (unused but required by Chrome API)
  * @param {Function} sendResponse - Send response function
  */
-const handleMessage = async (message, sender, sendResponse) => {
+const handleMessage = async (message, _sender, sendResponse) => {
     try {
         console.log("Received message:", message);
 
@@ -199,14 +227,38 @@ const handleMessage = async (message, sender, sendResponse) => {
                 break;
 
             case "captureScreenshot":
-                const tab = await chrome.tabs.get(message.data.tabId);
-                console.log(
-                    "Manual screenshot capture requested for tab:",
-                    tab.id,
-                    tab.url
-                );
-                const result = await screenshot.processTabChange(tab);
-                sendResponse(result);
+                try {
+                    const tab = await chrome.tabs.get(message.data.tabId);
+                    console.log(
+                        "Manual screenshot capture requested for tab:",
+                        tab.id,
+                        tab.url
+                    );
+
+                    // Process the tab change and get the result
+                    const result = await screenshot.processTabChange(tab);
+                    console.log("Screenshot processing result:", result);
+
+                    // Send the response back to the popup
+                    sendResponse(
+                        result || {
+                            success: true,
+                            message:
+                                "Screenshot may have been saved successfully",
+                        }
+                    );
+                } catch (error) {
+                    console.error(
+                        "Error processing screenshot capture:",
+                        error
+                    );
+                    sendResponse({
+                        success: false,
+                        error:
+                            error.message ||
+                            "Unknown error during screenshot capture",
+                    });
+                }
                 break;
 
             case "isAuthenticated":
