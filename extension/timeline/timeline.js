@@ -19,6 +19,11 @@ const paginationInfo = document.getElementById("paginationInfo");
 const refreshButton = document.getElementById("refreshButton");
 const settingsButton = document.getElementById("settingsButton");
 
+// Error Elements
+const errorContainer = document.getElementById("errorContainer");
+const errorText = document.getElementById("errorText");
+const dismissErrorButton = document.getElementById("dismissErrorButton");
+
 // Settings Modal Elements
 const settingsModal = document.getElementById("settingsModal");
 const closeSettingsButton = document.getElementById("closeSettingsButton");
@@ -160,6 +165,9 @@ const setupEventListeners = () => {
 
     // Dark mode toggle
     darkModeToggle.addEventListener("change", toggleDarkMode);
+
+    // Error dismiss button
+    dismissErrorButton.addEventListener("click", hideError);
 };
 
 /**
@@ -167,6 +175,9 @@ const setupEventListeners = () => {
  */
 const loadUserData = async () => {
     try {
+        // Hide any existing errors
+        hideError();
+
         // Load user preferences
         const preferences = await storage.preferences.get();
 
@@ -174,14 +185,32 @@ const loadUserData = async () => {
         captureEnabledToggle.checked = preferences.captureEnabled;
         retentionDaysInput.value = preferences.retentionDays;
         showBreadcrumbsToggle.checked = preferences.showBreadcrumbs;
-        apiBaseUrlInput.value =
-            preferences.apiBaseUrl || (await api.getApiBaseUrl());
+
+        // Get API base URL
+        let apiBaseUrl;
+        try {
+            apiBaseUrl = preferences.apiBaseUrl || (await api.getApiBaseUrl());
+        } catch (apiUrlError) {
+            console.warn("Error getting API base URL:", apiUrlError);
+            apiBaseUrl = "https://visual-time-travel.onrender.com/api";
+        }
+        apiBaseUrlInput.value = apiBaseUrl;
 
         // Load domains for filter
-        await loadDomains();
+        try {
+            await loadDomains();
+        } catch (domainsError) {
+            console.warn("Error loading domains:", domainsError);
+            // Continue even if domains fail to load
+        }
 
         // Load history
-        await loadHistory(true);
+        try {
+            await loadHistory(true);
+        } catch (historyError) {
+            console.error("Error loading history:", historyError);
+            showError("Failed to load history. Please try again later.");
+        }
     } catch (error) {
         console.error("Error loading user data:", error);
         showError("Failed to load user data. Please try again later.");
@@ -635,7 +664,22 @@ const toggleDarkMode = async () => {
  * @param {string} message - Error message
  */
 const showError = (message) => {
-    alert(message);
+    console.error(message);
+    errorText.textContent = message;
+    errorContainer.style.display = "block";
+
+    // Scroll to top to ensure error is visible
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Auto-hide after 10 seconds
+    setTimeout(hideError, 10000);
+};
+
+/**
+ * Hide error message
+ */
+const hideError = () => {
+    errorContainer.style.display = "none";
 };
 
 // Initialize the timeline
