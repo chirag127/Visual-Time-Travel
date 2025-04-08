@@ -4,13 +4,23 @@
  * @module utils/api
  */
 
-import { getAuthToken } from './auth.js';
+import { getAuthToken } from "./auth.js";
+import { getStorageItem } from "./storage.js";
 
 /**
- * Base API URL
- * @type {string}
+ * Get the base API URL
+ * @returns {Promise<string>} The base API URL
  */
-const API_BASE_URL = 'http://localhost:5000/api';
+async function getApiBaseUrl() {
+    try {
+        // Try to get the API URL from storage
+        const apiUrl = await getStorageItem("api_url");
+        return apiUrl || "http://localhost:5000/api";
+    } catch (error) {
+        console.error("Error getting API URL:", error);
+        return "http://localhost:5000/api";
+    }
+}
 
 /**
  * Make an API request
@@ -23,55 +33,78 @@ const API_BASE_URL = 'http://localhost:5000/api';
  * @throws {Error} If request fails
  */
 async function apiRequest(endpoint, options = {}) {
-  const { method = 'GET', body, auth = true } = options;
-  
-  // Build request URL
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  // Build request headers
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-  
-  // Add auth token if required
-  if (auth) {
-    const token = await getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    } else {
-      throw new Error('Authentication required');
+    const { method = "GET", body, auth = true } = options;
+
+    // Get API base URL
+    const apiBaseUrl = await getApiBaseUrl();
+
+    // Build request URL
+    const url = `${apiBaseUrl}${endpoint}`;
+
+    // Build request headers
+    const headers = {
+        "Content-Type": "application/json",
+    };
+
+    // Add auth token if required
+    if (auth) {
+        const token = await getAuthToken();
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+        } else {
+            throw new Error("Authentication required");
+        }
     }
-  }
-  
-  // Build request options
-  const requestOptions = {
-    method,
-    headers,
-    credentials: 'include'
-  };
-  
-  // Add body if provided
-  if (body) {
-    requestOptions.body = JSON.stringify(body);
-  }
-  
-  try {
-    // Make request
-    const response = await fetch(url, requestOptions);
-    
-    // Parse response
-    const data = await response.json();
-    
-    // Check if request was successful
-    if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+
+    // Build request options
+    const requestOptions = {
+        method,
+        headers,
+        credentials: "include",
+    };
+
+    // Add body if provided
+    if (body) {
+        requestOptions.body = JSON.stringify(body);
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
-  }
+
+    try {
+        console.log(`Making API request to: ${url}`);
+
+        // Make request
+        const response = await fetch(url, requestOptions);
+
+        // Log response status
+        console.log(`API response status: ${response.status}`);
+
+        // Parse response
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            console.error("Error parsing JSON response:", parseError);
+            throw new Error("Invalid response from server");
+        }
+
+        // Check if request was successful
+        if (!response.ok) {
+            const errorMessage =
+                data?.message || data?.error || "Something went wrong";
+            console.error("API error:", errorMessage);
+            throw new Error(errorMessage);
+        }
+
+        return data;
+    } catch (error) {
+        console.error("API request failed:", error);
+        // Make the error message more user-friendly
+        if (error.message.includes("Failed to fetch")) {
+            throw new Error(
+                "Cannot connect to server. Please check your internet connection or try again later."
+            );
+        }
+        throw error;
+    }
 }
 
 /**
@@ -81,11 +114,11 @@ async function apiRequest(endpoint, options = {}) {
  * @returns {Promise<Object>} User data and token
  */
 export async function register(email, password) {
-  return apiRequest('/auth/signup', {
-    method: 'POST',
-    body: { email, password },
-    auth: false
-  });
+    return apiRequest("/auth/signup", {
+        method: "POST",
+        body: { email, password },
+        auth: false,
+    });
 }
 
 /**
@@ -95,11 +128,11 @@ export async function register(email, password) {
  * @returns {Promise<Object>} User data and token
  */
 export async function login(email, password) {
-  return apiRequest('/auth/login', {
-    method: 'POST',
-    body: { email, password },
-    auth: false
-  });
+    return apiRequest("/auth/login", {
+        method: "POST",
+        body: { email, password },
+        auth: false,
+    });
 }
 
 /**
@@ -107,7 +140,7 @@ export async function login(email, password) {
  * @returns {Promise<Object>} User data
  */
 export async function getCurrentUser() {
-  return apiRequest('/auth/me');
+    return apiRequest("/auth/me");
 }
 
 /**
@@ -116,10 +149,10 @@ export async function getCurrentUser() {
  * @returns {Promise<Object>} Updated user data
  */
 export async function updatePreferences(preferences) {
-  return apiRequest('/auth/preferences', {
-    method: 'PUT',
-    body: { preferences }
-  });
+    return apiRequest("/auth/preferences", {
+        method: "PUT",
+        body: { preferences },
+    });
 }
 
 /**
@@ -131,10 +164,10 @@ export async function updatePreferences(preferences) {
  * @returns {Promise<Object>} Created history item
  */
 export async function uploadScreenshot(imageBase64, url, title, favicon) {
-  return apiRequest('/history/screenshot', {
-    method: 'POST',
-    body: { imageBase64, url, title, favicon }
-  });
+    return apiRequest("/history/screenshot", {
+        method: "POST",
+        body: { imageBase64, url, title, favicon },
+    });
 }
 
 /**
@@ -149,20 +182,20 @@ export async function uploadScreenshot(imageBase64, url, title, favicon) {
  * @returns {Promise<Object>} History items and pagination info
  */
 export async function getUserHistory(options = {}) {
-  // Build query string
-  const queryParams = new URLSearchParams();
-  
-  if (options.limit) queryParams.append('limit', options.limit);
-  if (options.page) queryParams.append('page', options.page);
-  if (options.domain) queryParams.append('domain', options.domain);
-  if (options.search) queryParams.append('search', options.search);
-  if (options.sortBy) queryParams.append('sortBy', options.sortBy);
-  if (options.sortOrder) queryParams.append('sortOrder', options.sortOrder);
-  
-  const queryString = queryParams.toString();
-  const endpoint = queryString ? `/history?${queryString}` : '/history';
-  
-  return apiRequest(endpoint);
+    // Build query string
+    const queryParams = new URLSearchParams();
+
+    if (options.limit) queryParams.append("limit", options.limit);
+    if (options.page) queryParams.append("page", options.page);
+    if (options.domain) queryParams.append("domain", options.domain);
+    if (options.search) queryParams.append("search", options.search);
+    if (options.sortBy) queryParams.append("sortBy", options.sortBy);
+    if (options.sortOrder) queryParams.append("sortOrder", options.sortOrder);
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/history?${queryString}` : "/history";
+
+    return apiRequest(endpoint);
 }
 
 /**
@@ -170,7 +203,7 @@ export async function getUserHistory(options = {}) {
  * @returns {Promise<Object>} List of domains with counts
  */
 export async function getUserDomains() {
-  return apiRequest('/history/domains');
+    return apiRequest("/history/domains");
 }
 
 /**
@@ -179,9 +212,9 @@ export async function getUserDomains() {
  * @returns {Promise<Object>} Deletion result
  */
 export async function deleteHistoryItem(id) {
-  return apiRequest(`/history/${id}`, {
-    method: 'DELETE'
-  });
+    return apiRequest(`/history/${id}`, {
+        method: "DELETE",
+    });
 }
 
 /**
@@ -192,16 +225,16 @@ export async function deleteHistoryItem(id) {
  * @returns {Promise<Object>} Deletion result
  */
 export async function clearUserHistory(options = {}) {
-  // Build query string
-  const queryParams = new URLSearchParams();
-  
-  if (options.domain) queryParams.append('domain', options.domain);
-  if (options.before) queryParams.append('before', options.before);
-  
-  const queryString = queryParams.toString();
-  const endpoint = queryString ? `/history?${queryString}` : '/history';
-  
-  return apiRequest(endpoint, {
-    method: 'DELETE'
-  });
+    // Build query string
+    const queryParams = new URLSearchParams();
+
+    if (options.domain) queryParams.append("domain", options.domain);
+    if (options.before) queryParams.append("before", options.before);
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/history?${queryString}` : "/history";
+
+    return apiRequest(endpoint, {
+        method: "DELETE",
+    });
 }

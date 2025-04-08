@@ -54,7 +54,7 @@ const historySchema = new mongoose.Schema({
       validator: function(v) {
         // Allow empty favicon
         if (!v) return true;
-        
+
         return validator.isURL(v, {
           protocols: ['http', 'https'],
           require_protocol: true
@@ -106,7 +106,7 @@ historySchema.pre('save', function(next) {
  */
 historySchema.statics.findByDomain = async function(userId, domain, options = {}) {
   const { limit = 50, skip = 0, sort = { timestamp: -1 } } = options;
-  
+
   return this.find({
     userId,
     domain
@@ -125,7 +125,7 @@ historySchema.statics.findByDomain = async function(userId, domain, options = {}
  */
 historySchema.statics.searchByKeyword = async function(userId, keyword, options = {}) {
   const { limit = 50, skip = 0, sort = { timestamp: -1 } } = options;
-  
+
   return this.find({
     userId,
     $or: [
@@ -147,7 +147,7 @@ historySchema.statics.searchByKeyword = async function(userId, keyword, options 
 historySchema.statics.deleteOlderThan = async function(userId, days) {
   const date = new Date();
   date.setDate(date.getDate() - days);
-  
+
   return this.deleteMany({
     userId,
     timestamp: { $lt: date }
