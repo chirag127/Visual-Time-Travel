@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visual Time Travel</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="container">
     <header>
       <h1>Visual Time Travel</h1>
-      <div class="theme-toggle">
-        <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
-        <label for="darkModeToggle" class="toggle-label">
-          <span class="toggle-inner"></span>
-          <span class="toggle-switch"></span>
-        </label>
+      <div class="header-controls">
+        <div class="theme-toggle">
+          <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+          <label for="darkModeToggle" class="toggle-label">
+            <span class="toggle-inner"></span>
+            <span class="toggle-switch"></span>
+          </label>
+          <span class="toggle-text">Dark Mode</span>
+        </div>
       </div>
     </header>
 
@@ -47,7 +52,8 @@
       <div class="form-group">
         <label for="signupPassword">Password</label>
         <input type="password" id="signupPassword" placeholder="Enter your password">
-        <small class="password-hint">Password must be at least 8 characters with uppercase, lowercase, number, and special character.</small>
+        <small class="password-hint">Password must be at least 8 characters with uppercase, lowercase, number, and
+          special character.</small>
       </div>
       <div class="form-group">
         <label for="confirmPassword">Confirm Password</label>
@@ -69,43 +75,60 @@
 
       <!-- History Tab Content -->
       <div id="historyContent" class="tab-content">
+        <!-- Manual Save Button -->
+        <div class="manual-save-section">
+          <button id="manualSaveButton" class="btn btn-primary btn-with-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span>Save Current Page</span>
+          </button>
+          <div id="saveStatus" class="save-status"></div>
+        </div>
+
         <div class="search-bar">
           <input type="text" id="searchInput" placeholder="Search history...">
           <button id="searchButton" class="btn btn-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
           </button>
         </div>
-        
+
         <div class="domain-filter">
           <select id="domainFilter">
             <option value="">All Domains</option>
           </select>
         </div>
-        
+
         <div id="historyList" class="history-list">
           <!-- History items will be added here dynamically -->
           <div class="empty-state">
             <p>No history items yet</p>
           </div>
         </div>
-        
+
         <div class="pagination">
           <button id="prevPageButton" class="btn btn-icon" disabled>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
           </button>
           <span id="paginationInfo">Page 1 of 1</span>
           <button id="nextPageButton" class="btn btn-icon" disabled>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </button>
         </div>
-        
+
         <div class="view-timeline">
           <button id="viewTimelineButton" class="btn btn-secondary">View Full Timeline</button>
         </div>
@@ -125,12 +148,12 @@
               </label>
             </div>
           </div>
-          
+
           <div class="setting-item">
             <label for="retentionDays">History Retention (days)</label>
             <input type="number" id="retentionDays" min="1" max="365" value="30">
           </div>
-          
+
           <div class="setting-item">
             <label for="showBreadcrumbsToggle">Show Navigation Breadcrumbs</label>
             <div class="toggle">
@@ -142,7 +165,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="settings-group">
           <h3>API Settings</h3>
           <div class="setting-item">
@@ -150,7 +173,7 @@
             <input type="text" id="apiBaseUrl" value="http://localhost:5000/api">
           </div>
         </div>
-        
+
         <div class="settings-actions">
           <button id="saveSettingsButton" class="btn btn-primary">Save Settings</button>
           <button id="clearHistoryButton" class="btn btn-danger">Clear History</button>
@@ -162,4 +185,5 @@
 
   <script type="module" src="popup.js"></script>
 </body>
+
 </html>
