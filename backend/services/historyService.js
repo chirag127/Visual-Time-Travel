@@ -4,11 +4,12 @@
  * @module services/historyService
  */
 
-const History = require('../models/historyModel');
-const User = require('../models/userModel');
-const { uploadToFreeImageHost } = require('./imageUploadService');
-const { notFound, badRequest } = require('../utils/errorHandler');
-const logger = require('../utils/logger');
+const mongoose = require("mongoose");
+const History = require("../models/historyModel");
+const User = require("../models/userModel");
+const { uploadToFreeImageHost } = require("./imageUploadService");
+const { notFound, badRequest } = require("../utils/errorHandler");
+const logger = require("../utils/logger");
 
 /**
  * Add a history item
@@ -22,74 +23,78 @@ const logger = require('../utils/logger');
  * @throws {ApiError} If creation fails
  */
 const addHistoryItem = async (userId, data) => {
-  try {
-    const { imageBase64, url, title, favicon } = data;
-    
-    // Check if user exists
-    const user = await User.findById(userId);
-    if (!user) {
-      throw notFound('User not found');
-    }
-    
-    // Check if screenshot capture is enabled for this user
-    if (!user.preferences.captureEnabled) {
-      logger.debug(`Screenshot capture disabled for user ${userId}`);
-      return { message: 'Screenshot capture is disabled' };
-    }
-    
-    // Upload image to FreeImage.host
-    const imageUrl = await uploadToFreeImageHost(imageBase64);
-    
-    // Extract domain from URL
-    const domain = new URL(url).hostname;
-    
-    // Create history item
-    const historyItem = await History.create({
-      userId,
-      url,
-      title,
-      imageUrl,
-      favicon,
-      domain,
-      timestamp: new Date()
-    });
-    
-    // Clean up old history items based on user preferences
-    const { retentionDays } = user.preferences;
-    if (retentionDays > 0) {
-      // Run cleanup in the background
-      History.deleteOlderThan(userId, retentionDays)
-        .then(result => {
-          logger.debug(`Deleted ${result.deletedCount} old history items for user ${userId}`);
-        })
-        .catch(error => {
-          logger.error(`Error cleaning up old history items: ${error.message}`);
+    try {
+        const { imageBase64, url, title, favicon } = data;
+
+        // Check if user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            throw notFound("User not found");
+        }
+
+        // Check if screenshot capture is enabled for this user
+        if (!user.preferences.captureEnabled) {
+            logger.debug(`Screenshot capture disabled for user ${userId}`);
+            return { message: "Screenshot capture is disabled" };
+        }
+
+        // Upload image to FreeImage.host
+        const imageUrl = await uploadToFreeImageHost(imageBase64);
+
+        // Extract domain from URL
+        const domain = new URL(url).hostname;
+
+        // Create history item
+        const historyItem = await History.create({
+            userId,
+            url,
+            title,
+            imageUrl,
+            favicon,
+            domain,
+            timestamp: new Date(),
         });
+
+        // Clean up old history items based on user preferences
+        const { retentionDays } = user.preferences;
+        if (retentionDays > 0) {
+            // Run cleanup in the background
+            History.deleteOlderThan(userId, retentionDays)
+                .then((result) => {
+                    logger.debug(
+                        `Deleted ${result.deletedCount} old history items for user ${userId}`
+                    );
+                })
+                .catch((error) => {
+                    logger.error(
+                        `Error cleaning up old history items: ${error.message}`
+                    );
+                });
+        }
+
+        return historyItem;
+    } catch (error) {
+        // If it's already an ApiError, rethrow it
+        if (error.statusCode) {
+            throw error;
+        }
+
+        // Log the error
+        logger.error("Error adding history item:", error);
+
+        // Handle invalid ObjectId
+        if (error.name === "CastError") {
+            throw notFound("User not found");
+        }
+
+        // Handle validation errors
+        if (error.name === "ValidationError") {
+            throw badRequest(error.message);
+        }
+
+        // Rethrow the error
+        throw error;
     }
-    
-    return historyItem;
-  } catch (error) {
-    // If it's already an ApiError, rethrow it
-    if (error.statusCode) {
-      throw error;
-    }
-    
-    // Log the error
-    logger.error('Error adding history item:', error);
-    
-    // Handle invalid ObjectId
-    if (error.name === 'CastError') {
-      throw notFound('User not found');
-    }
-    
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      throw badRequest(error.message);
-    }
-    
-    // Rethrow the error
-    throw error;
-  }
 };
 
 /**
@@ -106,77 +111,77 @@ const addHistoryItem = async (userId, data) => {
  * @throws {ApiError} If retrieval fails
  */
 const getUserHistory = async (userId, options = {}) => {
-  try {
-    // Set default options
-    const limit = parseInt(options.limit) || 50;
-    const page = parseInt(options.page) || 1;
-    const skip = (page - 1) * limit;
-    const domain = options.domain;
-    const search = options.search;
-    const sortBy = options.sortBy || 'timestamp';
-    const sortOrder = options.sortOrder === 'asc' ? 1 : -1;
-    
-    // Build sort object
-    const sort = { [sortBy]: sortOrder };
-    
-    // Build query
-    let query = { userId };
-    
-    // Add domain filter if provided
-    if (domain) {
-      query.domain = domain;
+    try {
+        // Set default options
+        const limit = parseInt(options.limit) || 50;
+        const page = parseInt(options.page) || 1;
+        const skip = (page - 1) * limit;
+        const domain = options.domain;
+        const search = options.search;
+        const sortBy = options.sortBy || "timestamp";
+        const sortOrder = options.sortOrder === "asc" ? 1 : -1;
+
+        // Build sort object
+        const sort = { [sortBy]: sortOrder };
+
+        // Build query
+        let query = { userId };
+
+        // Add domain filter if provided
+        if (domain) {
+            query.domain = domain;
+        }
+
+        // Add search filter if provided
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: "i" } },
+                { url: { $regex: search, $options: "i" } },
+            ];
+        }
+
+        // Get total count
+        const total = await History.countDocuments(query);
+
+        // Get history items
+        const historyItems = await History.find(query)
+            .sort(sort)
+            .skip(skip)
+            .limit(limit);
+
+        // Calculate pagination info
+        const totalPages = Math.ceil(total / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        return {
+            items: historyItems,
+            pagination: {
+                total,
+                limit,
+                page,
+                totalPages,
+                hasNextPage,
+                hasPrevPage,
+            },
+        };
+    } catch (error) {
+        // If it's already an ApiError, rethrow it
+        if (error.statusCode) {
+            throw error;
+        }
+
+        // Log the error
+        logger.error("Error getting user history:", error);
+
+        // Handle invalid ObjectId
+        if (error.name === "CastError") {
+            throw notFound("User not found");
+        }
+
+        // Rethrow the error
+        throw error;
     }
-    
-    // Add search filter if provided
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { url: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    // Get total count
-    const total = await History.countDocuments(query);
-    
-    // Get history items
-    const historyItems = await History.find(query)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
-    
-    // Calculate pagination info
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
-    
-    return {
-      items: historyItems,
-      pagination: {
-        total,
-        limit,
-        page,
-        totalPages,
-        hasNextPage,
-        hasPrevPage
-      }
-    };
-  } catch (error) {
-    // If it's already an ApiError, rethrow it
-    if (error.statusCode) {
-      throw error;
-    }
-    
-    // Log the error
-    logger.error('Error getting user history:', error);
-    
-    // Handle invalid ObjectId
-    if (error.name === 'CastError') {
-      throw notFound('User not found');
-    }
-    
-    // Rethrow the error
-    throw error;
-  }
 };
 
 /**
@@ -186,33 +191,35 @@ const getUserHistory = async (userId, options = {}) => {
  * @throws {ApiError} If retrieval fails
  */
 const getUserDomains = async (userId) => {
-  try {
-    // Aggregate domains with counts
-    const domains = await History.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
-      { $group: { _id: '$domain', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $project: { domain: '$_id', count: 1, _id: 0 } }
-    ]);
-    
-    return domains;
-  } catch (error) {
-    // If it's already an ApiError, rethrow it
-    if (error.statusCode) {
-      throw error;
+    try {
+        // Aggregate domains with counts
+        const domains = await History.aggregate([
+            { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+            { $group: { _id: "$domain", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $project: { domain: "$_id", count: 1, _id: 0 } },
+        ]);
+
+        logger.debug(`Found ${domains.length} domains for user ${userId}`);
+
+        return domains;
+    } catch (error) {
+        // If it's already an ApiError, rethrow it
+        if (error.statusCode) {
+            throw error;
+        }
+
+        // Log the error
+        logger.error("Error getting user domains:", error);
+
+        // Handle invalid ObjectId
+        if (error.name === "CastError") {
+            throw notFound("User not found");
+        }
+
+        // Rethrow the error
+        throw error;
     }
-    
-    // Log the error
-    logger.error('Error getting user domains:', error);
-    
-    // Handle invalid ObjectId
-    if (error.name === 'CastError') {
-      throw notFound('User not found');
-    }
-    
-    // Rethrow the error
-    throw error;
-  }
 };
 
 /**
@@ -223,35 +230,35 @@ const getUserDomains = async (userId) => {
  * @throws {ApiError} If deletion fails
  */
 const deleteHistoryItem = async (userId, historyItemId) => {
-  try {
-    // Find and delete the history item
-    const result = await History.findOneAndDelete({
-      _id: historyItemId,
-      userId
-    });
-    
-    if (!result) {
-      throw notFound('History item not found');
+    try {
+        // Find and delete the history item
+        const result = await History.findOneAndDelete({
+            _id: historyItemId,
+            userId,
+        });
+
+        if (!result) {
+            throw notFound("History item not found");
+        }
+
+        return { message: "History item deleted successfully" };
+    } catch (error) {
+        // If it's already an ApiError, rethrow it
+        if (error.statusCode) {
+            throw error;
+        }
+
+        // Log the error
+        logger.error("Error deleting history item:", error);
+
+        // Handle invalid ObjectId
+        if (error.name === "CastError") {
+            throw notFound("History item not found");
+        }
+
+        // Rethrow the error
+        throw error;
     }
-    
-    return { message: 'History item deleted successfully' };
-  } catch (error) {
-    // If it's already an ApiError, rethrow it
-    if (error.statusCode) {
-      throw error;
-    }
-    
-    // Log the error
-    logger.error('Error deleting history item:', error);
-    
-    // Handle invalid ObjectId
-    if (error.name === 'CastError') {
-      throw notFound('History item not found');
-    }
-    
-    // Rethrow the error
-    throw error;
-  }
 };
 
 /**
@@ -264,49 +271,49 @@ const deleteHistoryItem = async (userId, historyItemId) => {
  * @throws {ApiError} If deletion fails
  */
 const clearUserHistory = async (userId, options = {}) => {
-  try {
-    // Build query
-    const query = { userId };
-    
-    // Add domain filter if provided
-    if (options.domain) {
-      query.domain = options.domain;
+    try {
+        // Build query
+        const query = { userId };
+
+        // Add domain filter if provided
+        if (options.domain) {
+            query.domain = options.domain;
+        }
+
+        // Add date filter if provided
+        if (options.before) {
+            query.timestamp = { $lt: options.before };
+        }
+
+        // Delete matching history items
+        const result = await History.deleteMany(query);
+
+        return {
+            message: `${result.deletedCount} history items deleted successfully`,
+        };
+    } catch (error) {
+        // If it's already an ApiError, rethrow it
+        if (error.statusCode) {
+            throw error;
+        }
+
+        // Log the error
+        logger.error("Error clearing user history:", error);
+
+        // Handle invalid ObjectId
+        if (error.name === "CastError") {
+            throw notFound("User not found");
+        }
+
+        // Rethrow the error
+        throw error;
     }
-    
-    // Add date filter if provided
-    if (options.before) {
-      query.timestamp = { $lt: options.before };
-    }
-    
-    // Delete matching history items
-    const result = await History.deleteMany(query);
-    
-    return {
-      message: `${result.deletedCount} history items deleted successfully`
-    };
-  } catch (error) {
-    // If it's already an ApiError, rethrow it
-    if (error.statusCode) {
-      throw error;
-    }
-    
-    // Log the error
-    logger.error('Error clearing user history:', error);
-    
-    // Handle invalid ObjectId
-    if (error.name === 'CastError') {
-      throw notFound('User not found');
-    }
-    
-    // Rethrow the error
-    throw error;
-  }
 };
 
 module.exports = {
-  addHistoryItem,
-  getUserHistory,
-  getUserDomains,
-  deleteHistoryItem,
-  clearUserHistory
+    addHistoryItem,
+    getUserHistory,
+    getUserDomains,
+    deleteHistoryItem,
+    clearUserHistory,
 };
