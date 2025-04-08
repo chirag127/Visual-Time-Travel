@@ -1,151 +1,175 @@
 /**
  * Background script
  * Handles tab events and screenshot capture
+ * @module background
  */
 
-import { captureScreenshot, getFaviconUrl, shouldCaptureUrl } from './utils/screenshot.js';
-import { uploadScreenshot } from './utils/api.js';
-import { isLoggedIn } from './utils/auth.js';
-import { getUserPreferences } from './utils/storage.js';
+import api from './utils/api.js';
+import storage from './utils/storage.js';
+import screenshot from './utils/screenshot.js';
 
-// Keep track of the last captured tab
-let lastCapturedTabId = null;
-let lastCapturedUrl = null;
-
-// Listen for tab activation
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  try {
-    // Check if user is logged in
-    const loggedIn = await isLoggedIn();
-    if (!loggedIn) {
-      console.log('User not logged in, skipping screenshot capture');
-      return;
-    }
-    
-    // Get user preferences
-    const preferences = await getUserPreferences();
-    if (!preferences.captureEnabled) {
-      console.log('Screenshot capture disabled, skipping');
-      return;
-    }
-    
-    // Get the active tab
-    const tab = await new Promise((resolve) => {
-      chrome.tabs.get(activeInfo.tabId, (tab) => {
-        resolve(tab);
-      });
-    });
-    
-    // Skip if tab is not fully loaded
-    if (tab.status !== 'complete') {
-      console.log('Tab not fully loaded, skipping screenshot capture');
-      return;
-    }
-    
-    // Skip if URL should not be captured
-    if (!shouldCaptureUrl(tab.url)) {
-      console.log('URL should not be captured, skipping');
-      return;
-    }
-    
-    // Skip if this tab was just captured
-    if (tab.id === lastCapturedTabId && tab.url === lastCapturedUrl) {
-      console.log('Tab was just captured, skipping');
-      return;
-    }
-    
-    // Wait a moment for the tab to render
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    // Capture screenshot
-    const imageBase64 = await captureScreenshot();
-    
-    // Get favicon URL
-    const favicon = getFaviconUrl(tab);
-    
-    // Upload screenshot
-    await uploadScreenshot(imageBase64, tab.url, tab.title, favicon);
-    
-    // Update last captured tab
-    lastCapturedTabId = tab.id;
-    lastCapturedUrl = tab.url;
-    
-    console.log('Screenshot captured and uploaded for:', tab.url);
-  } catch (error) {
-    console.error('Error capturing screenshot:', error);
-  }
-});
-
-// Listen for tab updates
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Only handle when the tab is fully loaded
-  if (changeInfo.status === 'complete') {
-    // Reset last captured tab if the URL changed
-    if (tabId === lastCapturedTabId && tab.url !== lastCapturedUrl) {
-      lastCapturedTabId = null;
-      lastCapturedUrl = null;
-    }
-  }
-});
-
-// Listen for messages from popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'captureCurrentTab') {
-    captureCurrentTab()
-      .then((result) => sendResponse({ success: true, result }))
-      .catch((error) => sendResponse({ success: false, error: error.message }));
-    
-    // Return true to indicate that the response will be sent asynchronously
-    return true;
-  }
-});
+// Track the last active tab to avoid duplicate captures
+let lastActiveTabId = null;
+let lastActiveTabUrl = null;
+let processingTab = false;
 
 /**
- * Capture the current tab
- * @returns {Promise<Object>} Result of the capture
+ * Initialize the extension
  */
-async function captureCurrentTab() {
-  try {
-    // Check if user is logged in
-    const loggedIn = await isLoggedIn();
-    if (!loggedIn) {
-      throw new Error('User not logged in');
+const initialize = async () => {
+  console.log('Visual Time Travel extension initialized');
+  
+  // Set up tab change listeners
+  chrome.tabs.onActivated.addListener(handleTabActivated);
+  chrome.tabs.onUpdated.addListener(handleTabUpdated);
+  
+  // Set up authentication state change listener
+  storage.onChange((changes) => {
+    if (changes.token) {
+      console.log('Authentication state changed');
     }
+  });
+};
+
+/**
+ * Handle tab activated event
+ * @param {Object} activeInfo - Active tab info
+ */
+const handleTabActivated = async (activeInfo) => {
+  try {
+    // Skip if we're already processing a tab
+    if (processingTab) return;
+    processingTab = true;
     
     // Get the active tab
-    const tabs = await new Promise((resolve) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        resolve(tabs);
-      });
-    });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
-    if (tabs.length === 0) {
-      throw new Error('No active tab found');
+    // Skip if no tab or same as last active tab
+    if (!tab || tab.id === lastActiveTabId && tab.url === lastActiveTabUrl) {
+      processingTab = false;
+      return;
     }
     
-    const tab = tabs[0];
+    // Update last active tab
+    lastActiveTabId = tab.id;
+    lastActiveTabUrl = tab.url;
     
-    // Skip if URL should not be captured
-    if (!shouldCaptureUrl(tab.url)) {
-      throw new Error('This URL cannot be captured');
-    }
+    // Process the tab change
+    await screenshot.processTabChange(tab);
     
-    // Capture screenshot
-    const imageBase64 = await captureScreenshot();
-    
-    // Get favicon URL
-    const favicon = getFaviconUrl(tab);
-    
-    // Upload screenshot
-    const result = await uploadScreenshot(imageBase64, tab.url, tab.title, favicon);
-    
-    // Update last captured tab
-    lastCapturedTabId = tab.id;
-    lastCapturedUrl = tab.url;
-    
-    return result;
+    processingTab = false;
   } catch (error) {
-    console.error('Error capturing current tab:', error);
-    throw error;
+    console.error('Error handling tab activated:', error);
+    processingTab = false;
   }
-}
+};
+
+/**
+ * Handle tab updated event
+ * @param {number} tabId - Tab ID
+ * @param {Object} changeInfo - Change info
+ * @param {chrome.tabs.Tab} tab - Tab
+ */
+const handleTabUpdated = async (tabId, changeInfo, tab) => {
+  try {
+    // Only process if the tab is complete and has a URL change
+    if (changeInfo.status !== 'complete' || !changeInfo.url) return;
+    
+    // Skip if we're already processing a tab
+    if (processingTab) return;
+    processingTab = true;
+    
+    // Skip if not the active tab
+    if (!tab.active) {
+      processingTab = false;
+      return;
+    }
+    
+    // Skip if same as last active tab URL
+    if (tab.url === lastActiveTabUrl) {
+      processingTab = false;
+      return;
+    }
+    
+    // Update last active tab
+    lastActiveTabId = tab.id;
+    lastActiveTabUrl = tab.url;
+    
+    // Process the tab change
+    await screenshot.processTabChange(tab);
+    
+    processingTab = false;
+  } catch (error) {
+    console.error('Error handling tab updated:', error);
+    processingTab = false;
+  }
+};
+
+/**
+ * Handle messages from popup or content scripts
+ * @param {Object} message - Message
+ * @param {Object} sender - Sender
+ * @param {Function} sendResponse - Send response function
+ */
+const handleMessage = async (message, sender, sendResponse) => {
+  try {
+    console.log('Received message:', message);
+    
+    switch (message.action) {
+      case 'login':
+        const { email, password } = message.data;
+        const loginResult = await api.auth.login(email, password);
+        sendResponse({ success: true, data: loginResult });
+        break;
+        
+      case 'logout':
+        await api.auth.logout();
+        sendResponse({ success: true });
+        break;
+        
+      case 'getCurrentUser':
+        const user = await api.auth.getCurrentUser();
+        sendResponse({ success: true, data: user });
+        break;
+        
+      case 'updatePreferences':
+        const { preferences } = message.data;
+        const updatedUser = await api.auth.updatePreferences(preferences);
+        
+        // Also update local preferences
+        await storage.preferences.set(preferences);
+        
+        sendResponse({ success: true, data: updatedUser });
+        break;
+        
+      case 'captureScreenshot':
+        const tab = await chrome.tabs.get(message.data.tabId);
+        await screenshot.processTabChange(tab);
+        sendResponse({ success: true });
+        break;
+        
+      case 'isAuthenticated':
+        const isAuth = await api.isAuthenticated();
+        sendResponse({ success: true, data: isAuth });
+        break;
+        
+      default:
+        sendResponse({ success: false, error: 'Unknown action' });
+    }
+  } catch (error) {
+    console.error('Error handling message:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+  
+  return true; // Keep the message channel open for async response
+};
+
+// Set up message listener
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle the message asynchronously
+  handleMessage(message, sender, sendResponse);
+  return true; // Keep the message channel open for async response
+});
+
+// Initialize the extension
+initialize();

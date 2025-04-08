@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Time Travel</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Visual Time Travel</h1>
+      <div class="theme-toggle">
+        <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+        <label for="darkModeToggle" class="toggle-label">
+          <span class="toggle-inner"></span>
+          <span class="toggle-switch"></span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Login Form (shown when not authenticated) -->
+    <div id="loginForm" class="auth-form">
+      <h2>Login</h2>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="Enter your email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password">
+      </div>
+      <div class="form-actions">
+        <button id="loginButton" class="btn btn-primary">Login</button>
+        <button id="showSignupButton" class="btn btn-link">Create Account</button>
+      </div>
+      <div id="loginError" class="error-message"></div>
+    </div>
+
+    <!-- Signup Form (hidden by default) -->
+    <div id="signupForm" class="auth-form hidden">
+      <h2>Create Account</h2>
+      <div class="form-group">
+        <label for="signupEmail">Email</label>
+        <input type="email" id="signupEmail" placeholder="Enter your email">
+      </div>
+      <div class="form-group">
+        <label for="signupPassword">Password</label>
+        <input type="password" id="signupPassword" placeholder="Enter your password">
+        <small class="password-hint">Password must be at least 8 characters with uppercase, lowercase, number, and special character.</small>
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Confirm your password">
+      </div>
+      <div class="form-actions">
+        <button id="signupButton" class="btn btn-primary">Sign Up</button>
+        <button id="showLoginButton" class="btn btn-link">Back to Login</button>
+      </div>
+      <div id="signupError" class="error-message"></div>
+    </div>
+
+    <!-- Main Content (shown when authenticated) -->
+    <div id="mainContent" class="main-content hidden">
+      <div class="tabs">
+        <button id="historyTab" class="tab-button active">History</button>
+        <button id="settingsTab" class="tab-button">Settings</button>
+      </div>
+
+      <!-- History Tab Content -->
+      <div id="historyContent" class="tab-content">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search history...">
+          <button id="searchButton" class="btn btn-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="domain-filter">
+          <select id="domainFilter">
+            <option value="">All Domains</option>
+          </select>
+        </div>
+        
+        <div id="historyList" class="history-list">
+          <!-- History items will be added here dynamically -->
+          <div class="empty-state">
+            <p>No history items yet</p>
+          </div>
+        </div>
+        
+        <div class="pagination">
+          <button id="prevPageButton" class="btn btn-icon" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <span id="paginationInfo">Page 1 of 1</span>
+          <button id="nextPageButton" class="btn btn-icon" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="view-timeline">
+          <button id="viewTimelineButton" class="btn btn-secondary">View Full Timeline</button>
+        </div>
+      </div>
+
+      <!-- Settings Tab Content -->
+      <div id="settingsContent" class="tab-content hidden">
+        <div class="settings-group">
+          <h3>Capture Settings</h3>
+          <div class="setting-item">
+            <label for="captureEnabledToggle">Enable Screenshot Capture</label>
+            <div class="toggle">
+              <input type="checkbox" id="captureEnabledToggle" class="toggle-checkbox" checked>
+              <label for="captureEnabledToggle" class="toggle-label">
+                <span class="toggle-inner"></span>
+                <span class="toggle-switch"></span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="setting-item">
+            <label for="retentionDays">History Retention (days)</label>
+            <input type="number" id="retentionDays" min="1" max="365" value="30">
+          </div>
+          
+          <div class="setting-item">
+            <label for="showBreadcrumbsToggle">Show Navigation Breadcrumbs</label>
+            <div class="toggle">
+              <input type="checkbox" id="showBreadcrumbsToggle" class="toggle-checkbox" checked>
+              <label for="showBreadcrumbsToggle" class="toggle-label">
+                <span class="toggle-inner"></span>
+                <span class="toggle-switch"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <h3>API Settings</h3>
+          <div class="setting-item">
+            <label for="apiBaseUrl">API Base URL</label>
+            <input type="text" id="apiBaseUrl" value="http://localhost:5000/api">
+          </div>
+        </div>
+        
+        <div class="settings-actions">
+          <button id="saveSettingsButton" class="btn btn-primary">Save Settings</button>
+          <button id="clearHistoryButton" class="btn btn-danger">Clear History</button>
+          <button id="logoutButton" class="btn btn-secondary">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

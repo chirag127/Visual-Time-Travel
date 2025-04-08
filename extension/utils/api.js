@@ -1,26 +1,58 @@
 /**
  * API utility module
- * Handles API calls to the backend
+ * Handles communication with the backend API
  * @module utils/api
  */
 
-import { getAuthToken } from "./auth.js";
-import { getStorageItem } from "./storage.js";
+// Default API configuration
+const API_CONFIG = {
+  baseUrl: 'http://localhost:5000/api',
+  timeout: 10000, // 10 seconds
+};
 
 /**
- * Get the base API URL
- * @returns {Promise<string>} The base API URL
+ * Get the API base URL
+ * @returns {string} The API base URL
  */
-async function getApiBaseUrl() {
-    try {
-        // Try to get the API URL from storage
-        const apiUrl = await getStorageItem("api_url");
-        return apiUrl || "http://localhost:5000/api";
-    } catch (error) {
-        console.error("Error getting API URL:", error);
-        return "http://localhost:5000/api";
-    }
-}
+const getApiBaseUrl = async () => {
+  const { apiBaseUrl } = await chrome.storage.local.get('apiBaseUrl');
+  return apiBaseUrl || API_CONFIG.baseUrl;
+};
+
+/**
+ * Get the authentication token
+ * @returns {Promise<string|null>} The authentication token or null if not logged in
+ */
+const getAuthToken = async () => {
+  const { token } = await chrome.storage.local.get('token');
+  return token || null;
+};
+
+/**
+ * Set the authentication token
+ * @param {string} token - The authentication token
+ * @returns {Promise<void>}
+ */
+const setAuthToken = async (token) => {
+  await chrome.storage.local.set({ token });
+};
+
+/**
+ * Clear the authentication token
+ * @returns {Promise<void>}
+ */
+const clearAuthToken = async () => {
+  await chrome.storage.local.remove('token');
+};
+
+/**
+ * Check if the user is authenticated
+ * @returns {Promise<boolean>} Whether the user is authenticated
+ */
+const isAuthenticated = async () => {
+  const token = await getAuthToken();
+  return !!token;
+};
 
 /**
  * Make an API request
@@ -28,213 +60,251 @@ async function getApiBaseUrl() {
  * @param {Object} options - Request options
  * @param {string} [options.method='GET'] - HTTP method
  * @param {Object} [options.body] - Request body
- * @param {boolean} [options.auth=true] - Whether to include auth token
+ * @param {boolean} [options.requiresAuth=true] - Whether the request requires authentication
+ * @param {number} [options.timeout] - Request timeout in milliseconds
  * @returns {Promise<Object>} Response data
- * @throws {Error} If request fails
+ * @throws {Error} If the request fails
  */
-async function apiRequest(endpoint, options = {}) {
-    const { method = "GET", body, auth = true } = options;
+const apiRequest = async (endpoint, options = {}) => {
+  const {
+    method = 'GET',
+    body,
+    requiresAuth = true,
+    timeout = API_CONFIG.timeout,
+  } = options;
 
-    // Get API base URL
-    const apiBaseUrl = await getApiBaseUrl();
+  const baseUrl = await getApiBaseUrl();
+  const url = `${baseUrl}${endpoint}`;
 
-    // Build request URL
-    const url = `${apiBaseUrl}${endpoint}`;
+  const headers = {
+    'Content-Type': 'application/json',
+  };
 
-    // Build request headers
-    const headers = {
-        "Content-Type": "application/json",
-    };
+  // Add authentication token if required
+  if (requiresAuth) {
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
-    // Add auth token if required
-    if (auth) {
-        const token = await getAuthToken();
-        if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-        } else {
-            throw new Error("Authentication required");
-        }
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+
+    // Clear timeout
+    clearTimeout(timeoutId);
+
+    // Parse response
+    const data = await response.json();
+
+    // Check if response is successful
+    if (!response.ok) {
+      throw new Error(data.message || 'API request failed');
     }
 
-    // Build request options
-    const requestOptions = {
-        method,
-        headers,
-        credentials: "include",
-    };
+    return data;
+  } catch (error) {
+    // Clear timeout
+    clearTimeout(timeoutId);
 
-    // Add body if provided
-    if (body) {
-        requestOptions.body = JSON.stringify(body);
+    // Handle timeout
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout');
     }
 
-    try {
-        console.log(`Making API request to: ${url}`);
+    // Rethrow error
+    throw error;
+  }
+};
 
-        // Make request
-        const response = await fetch(url, requestOptions);
+/**
+ * Authentication API
+ */
+const auth = {
+  /**
+   * Register a new user
+   * @param {string} email - User email
+   * @param {string} password - User password
+   * @returns {Promise<Object>} User data and token
+   */
+  register: async (email, password) => {
+    const response = await apiRequest('/auth/signup', {
+      method: 'POST',
+      body: { email, password },
+      requiresAuth: false,
+    });
 
-        // Log response status
-        console.log(`API response status: ${response.status}`);
-
-        // Parse response
-        let data;
-        try {
-            data = await response.json();
-        } catch (parseError) {
-            console.error("Error parsing JSON response:", parseError);
-            throw new Error("Invalid response from server");
-        }
-
-        // Check if request was successful
-        if (!response.ok) {
-            const errorMessage =
-                data?.message || data?.error || "Something went wrong";
-            console.error("API error:", errorMessage);
-            throw new Error(errorMessage);
-        }
-
-        return data;
-    } catch (error) {
-        console.error("API request failed:", error);
-        // Make the error message more user-friendly
-        if (error.message.includes("Failed to fetch")) {
-            throw new Error(
-                "Cannot connect to server. Please check your internet connection or try again later."
-            );
-        }
-        throw error;
+    // Save token
+    if (response.data && response.data.token) {
+      await setAuthToken(response.data.token);
     }
-}
 
-/**
- * Register a new user
- * @param {string} email - User email
- * @param {string} password - User password
- * @returns {Promise<Object>} User data and token
- */
-export async function register(email, password) {
-    return apiRequest("/auth/signup", {
-        method: "POST",
-        body: { email, password },
-        auth: false,
+    return response.data;
+  },
+
+  /**
+   * Login a user
+   * @param {string} email - User email
+   * @param {string} password - User password
+   * @returns {Promise<Object>} User data and token
+   */
+  login: async (email, password) => {
+    const response = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      requiresAuth: false,
     });
-}
 
-/**
- * Login a user
- * @param {string} email - User email
- * @param {string} password - User password
- * @returns {Promise<Object>} User data and token
- */
-export async function login(email, password) {
-    return apiRequest("/auth/login", {
-        method: "POST",
-        body: { email, password },
-        auth: false,
+    // Save token
+    if (response.data && response.data.token) {
+      await setAuthToken(response.data.token);
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Logout the current user
+   * @returns {Promise<void>}
+   */
+  logout: async () => {
+    await clearAuthToken();
+  },
+
+  /**
+   * Get the current user
+   * @returns {Promise<Object>} User data
+   */
+  getCurrentUser: async () => {
+    const response = await apiRequest('/auth/me');
+    return response.data;
+  },
+
+  /**
+   * Update user preferences
+   * @param {Object} preferences - User preferences
+   * @returns {Promise<Object>} Updated user data
+   */
+  updatePreferences: async (preferences) => {
+    const response = await apiRequest('/auth/preferences', {
+      method: 'PUT',
+      body: { preferences },
     });
-}
+    return response.data;
+  },
+};
 
 /**
- * Get current user
- * @returns {Promise<Object>} User data
+ * History API
  */
-export async function getCurrentUser() {
-    return apiRequest("/auth/me");
-}
-
-/**
- * Update user preferences
- * @param {Object} preferences - User preferences
- * @returns {Promise<Object>} Updated user data
- */
-export async function updatePreferences(preferences) {
-    return apiRequest("/auth/preferences", {
-        method: "PUT",
-        body: { preferences },
+const history = {
+  /**
+   * Upload a screenshot
+   * @param {string} imageBase64 - Base64 encoded screenshot
+   * @param {string} url - Page URL
+   * @param {string} title - Page title
+   * @param {string} [favicon] - Page favicon URL
+   * @returns {Promise<Object>} Created history item
+   */
+  uploadScreenshot: async (imageBase64, url, title, favicon) => {
+    const response = await apiRequest('/history/screenshot', {
+      method: 'POST',
+      body: { imageBase64, url, title, favicon },
     });
-}
+    return response.data;
+  },
 
-/**
- * Upload a screenshot
- * @param {string} imageBase64 - Base64 encoded screenshot
- * @param {string} url - Page URL
- * @param {string} title - Page title
- * @param {string} [favicon] - Page favicon URL
- * @returns {Promise<Object>} Created history item
- */
-export async function uploadScreenshot(imageBase64, url, title, favicon) {
-    return apiRequest("/history/screenshot", {
-        method: "POST",
-        body: { imageBase64, url, title, favicon },
-    });
-}
-
-/**
- * Get user history
- * @param {Object} [options] - Query options
- * @param {number} [options.limit] - Maximum number of items to return
- * @param {number} [options.page] - Page number
- * @param {string} [options.domain] - Filter by domain
- * @param {string} [options.search] - Search keyword
- * @param {string} [options.sortBy] - Sort field
- * @param {string} [options.sortOrder] - Sort order
- * @returns {Promise<Object>} History items and pagination info
- */
-export async function getUserHistory(options = {}) {
+  /**
+   * Get user history
+   * @param {Object} [options] - Query options
+   * @param {number} [options.limit] - Maximum number of items to return
+   * @param {number} [options.page] - Page number
+   * @param {string} [options.domain] - Filter by domain
+   * @param {string} [options.search] - Search keyword
+   * @param {string} [options.sortBy] - Sort field
+   * @param {string} [options.sortOrder] - Sort order
+   * @returns {Promise<Object>} History items and pagination info
+   */
+  getUserHistory: async (options = {}) => {
     // Build query string
     const queryParams = new URLSearchParams();
-
-    if (options.limit) queryParams.append("limit", options.limit);
-    if (options.page) queryParams.append("page", options.page);
-    if (options.domain) queryParams.append("domain", options.domain);
-    if (options.search) queryParams.append("search", options.search);
-    if (options.sortBy) queryParams.append("sortBy", options.sortBy);
-    if (options.sortOrder) queryParams.append("sortOrder", options.sortOrder);
-
+    
+    if (options.limit) queryParams.append('limit', options.limit);
+    if (options.page) queryParams.append('page', options.page);
+    if (options.domain) queryParams.append('domain', options.domain);
+    if (options.search) queryParams.append('search', options.search);
+    if (options.sortBy) queryParams.append('sortBy', options.sortBy);
+    if (options.sortOrder) queryParams.append('sortOrder', options.sortOrder);
+    
     const queryString = queryParams.toString();
-    const endpoint = queryString ? `/history?${queryString}` : "/history";
+    const endpoint = queryString ? `/history?${queryString}` : '/history';
+    
+    const response = await apiRequest(endpoint);
+    return response.data;
+  },
 
-    return apiRequest(endpoint);
-}
+  /**
+   * Get user domains
+   * @returns {Promise<Array>} List of domains with counts
+   */
+  getUserDomains: async () => {
+    const response = await apiRequest('/history/domains');
+    return response.data;
+  },
 
-/**
- * Get user domains
- * @returns {Promise<Object>} List of domains with counts
- */
-export async function getUserDomains() {
-    return apiRequest("/history/domains");
-}
-
-/**
- * Delete a history item
- * @param {string} id - History item ID
- * @returns {Promise<Object>} Deletion result
- */
-export async function deleteHistoryItem(id) {
-    return apiRequest(`/history/${id}`, {
-        method: "DELETE",
+  /**
+   * Delete a history item
+   * @param {string} id - History item ID
+   * @returns {Promise<Object>} Deletion result
+   */
+  deleteHistoryItem: async (id) => {
+    const response = await apiRequest(`/history/${id}`, {
+      method: 'DELETE',
     });
-}
+    return response.data;
+  },
 
-/**
- * Clear user history
- * @param {Object} [options] - Clear options
- * @param {string} [options.domain] - Clear only items from this domain
- * @param {string} [options.before] - Clear only items before this date
- * @returns {Promise<Object>} Deletion result
- */
-export async function clearUserHistory(options = {}) {
+  /**
+   * Clear user history
+   * @param {Object} [options] - Clear options
+   * @param {string} [options.domain] - Clear only items from this domain
+   * @param {Date} [options.before] - Clear only items before this date
+   * @returns {Promise<Object>} Deletion result
+   */
+  clearUserHistory: async (options = {}) => {
     // Build query string
     const queryParams = new URLSearchParams();
-
-    if (options.domain) queryParams.append("domain", options.domain);
-    if (options.before) queryParams.append("before", options.before);
-
+    
+    if (options.domain) queryParams.append('domain', options.domain);
+    if (options.before) queryParams.append('before', options.before.toISOString());
+    
     const queryString = queryParams.toString();
-    const endpoint = queryString ? `/history?${queryString}` : "/history";
-
-    return apiRequest(endpoint, {
-        method: "DELETE",
+    const endpoint = queryString ? `/history?${queryString}` : '/history';
+    
+    const response = await apiRequest(endpoint, {
+      method: 'DELETE',
     });
-}
+    return response.data;
+  },
+};
+
+// Export API modules
+export default {
+  getApiBaseUrl,
+  setApiBaseUrl: async (baseUrl) => {
+    await chrome.storage.local.set({ apiBaseUrl: baseUrl });
+  },
+  isAuthenticated,
+  auth,
+  history,
+};

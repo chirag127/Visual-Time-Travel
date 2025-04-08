@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Time Travel - Timeline</title>
+  <link rel="stylesheet" href="timeline.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <h1>Visual Time Travel</h1>
+        <p class="subtitle">Your browsing history timeline</p>
+      </div>
+      <div class="header-right">
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search history...">
+          <button id="searchButton" class="btn btn-primary">Search</button>
+        </div>
+        <div class="filter-container">
+          <select id="domainFilter">
+            <option value="">All Domains</option>
+          </select>
+          <select id="dateFilter">
+            <option value="">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+        <div class="theme-toggle">
+          <input type="checkbox" id="darkModeToggle" class="toggle-checkbox">
+          <label for="darkModeToggle" class="toggle-label">
+            <span class="toggle-inner"></span>
+            <span class="toggle-switch"></span>
+          </label>
+          <span class="toggle-text">Dark Mode</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="timeline-container">
+        <div id="timeline" class="timeline">
+          <!-- Timeline items will be added here dynamically -->
+          <div class="empty-state">
+            <p>No history items found</p>
+            <button id="refreshButton" class="btn btn-secondary">Refresh</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pagination">
+        <button id="loadMoreButton" class="btn btn-secondary">Load More</button>
+        <div id="paginationInfo" class="pagination-info">Showing 0 of 0 items</div>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 Visual Time Travel</p>
+      <div class="footer-links">
+        <button id="clearHistoryButton" class="btn btn-link">Clear History</button>
+        <button id="settingsButton" class="btn btn-link">Settings</button>
+      </div>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Settings</h2>
+          <button id="closeSettingsButton" class="close-button">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-group">
+            <h3>Capture Settings</h3>
+            <div class="setting-item">
+              <label for="captureEnabledToggle">Enable Screenshot Capture</label>
+              <div class="toggle">
+                <input type="checkbox" id="captureEnabledToggle" class="toggle-checkbox" checked>
+                <label for="captureEnabledToggle" class="toggle-label">
+                  <span class="toggle-inner"></span>
+                  <span class="toggle-switch"></span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="setting-item">
+              <label for="retentionDays">History Retention (days)</label>
+              <input type="number" id="retentionDays" min="1" max="365" value="30">
+            </div>
+            
+            <div class="setting-item">
+              <label for="showBreadcrumbsToggle">Show Navigation Breadcrumbs</label>
+              <div class="toggle">
+                <input type="checkbox" id="showBreadcrumbsToggle" class="toggle-checkbox" checked>
+                <label for="showBreadcrumbsToggle" class="toggle-label">
+                  <span class="toggle-inner"></span>
+                  <span class="toggle-switch"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-group">
+            <h3>API Settings</h3>
+            <div class="setting-item">
+              <label for="apiBaseUrl">API Base URL</label>
+              <input type="text" id="apiBaseUrl" value="http://localhost:5000/api">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="saveSettingsButton" class="btn btn-primary">Save Settings</button>
+          <button id="cancelSettingsButton" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal">
+      <div class="modal-content preview-modal-content">
+        <div class="modal-header">
+          <h2 id="previewTitle">Page Title</h2>
+          <button id="closePreviewButton" class="close-button">&times;</button>
+        </div>
+        <div class="modal-body preview-modal-body">
+          <div class="preview-image-container">
+            <img id="previewImage" src="" alt="Preview">
+          </div>
+          <div class="preview-details">
+            <p id="previewUrl" class="preview-url"></p>
+            <p id="previewTime" class="preview-time"></p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="visitPageButton" class="btn btn-primary">Visit Page</button>
+          <button id="deleteItemButton" class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+      <div class="modal-content confirmation-modal-content">
+        <div class="modal-header">
+          <h2>Confirmation</h2>
+          <button id="closeConfirmationButton" class="close-button">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmationMessage">Are you sure?</p>
+        </div>
+        <div class="modal-footer">
+          <button id="confirmButton" class="btn btn-danger">Confirm</button>
+          <button id="cancelButton" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="timeline.js"></script>
+</body>
+</html>

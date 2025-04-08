@@ -1,126 +1,94 @@
 /**
  * Screenshot utility module
- * Handles screenshot capture
+ * Handles capturing screenshots of tabs
  * @module utils/screenshot
  */
+
+import api from './api.js';
+import storage from './storage.js';
 
 /**
  * Capture a screenshot of the current tab
  * @returns {Promise<string>} Base64 encoded screenshot
  */
-export async function captureScreenshot() {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.tabs.captureVisibleTab(
-        null,
-        { format: 'png', quality: 70 },
-        (dataUrl) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-            return;
-          }
-          
-          // Remove the data:image/png;base64, prefix
-          const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-          resolve(base64);
-        }
-      );
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
+const captureVisibleTab = async () => {
+  try {
+    // Capture the visible tab
+    const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
+    
+    // Convert data URL to base64 string (remove the prefix)
+    const base64 = dataUrl.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+    
+    return base64;
+  } catch (error) {
+    console.error('Error capturing screenshot:', error);
+    throw error;
+  }
+};
 
 /**
- * Get the favicon URL of the current tab
- * @param {Object} tab - Chrome tab object
+ * Get the favicon URL for a tab
+ * @param {chrome.tabs.Tab} tab - Chrome tab
  * @returns {string|null} Favicon URL or null if not available
  */
-export function getFaviconUrl(tab) {
-  // Try to get favicon from tab
-  if (tab.favIconUrl) {
+const getFaviconUrl = (tab) => {
+  if (tab.favIconUrl && tab.favIconUrl.startsWith('http')) {
     return tab.favIconUrl;
   }
-  
-  // Try to get favicon from Google's favicon service
-  if (tab.url) {
-    try {
-      const url = new URL(tab.url);
-      return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
-    } catch (error) {
-      console.error('Error getting favicon URL:', error);
-    }
-  }
-  
   return null;
-}
+};
 
 /**
- * Get the current tab
- * @returns {Promise<Object>} Chrome tab object
+ * Process a tab change and capture screenshot
+ * @param {chrome.tabs.Tab} tab - The active tab
+ * @returns {Promise<void>}
  */
-export function getCurrentTab() {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-        
-        if (tabs.length === 0) {
-          reject(new Error('No active tab found'));
-          return;
-        }
-        
-        resolve(tabs[0]);
-      });
-    } catch (error) {
-      reject(error);
+const processTabChange = async (tab) => {
+  try {
+    // Check if capture is enabled in preferences
+    const captureEnabled = await storage.preferences.isCaptureEnabled();
+    if (!captureEnabled) {
+      console.log('Screenshot capture is disabled');
+      return;
     }
-  });
-}
+    
+    // Check if user is authenticated
+    const isAuthenticated = await api.isAuthenticated();
+    if (!isAuthenticated) {
+      console.log('User is not authenticated');
+      return;
+    }
+    
+    // Skip chrome:// and edge:// URLs
+    if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || 
+        tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
+      console.log('Skipping browser internal page:', tab.url);
+      return;
+    }
+    
+    // Capture screenshot
+    console.log('Capturing screenshot for:', tab.url);
+    const imageBase64 = await captureVisibleTab();
+    
+    // Get favicon URL
+    const favicon = getFaviconUrl(tab);
+    
+    // Upload to server
+    await api.history.uploadScreenshot(
+      imageBase64,
+      tab.url,
+      tab.title || 'Untitled Page',
+      favicon
+    );
+    
+    console.log('Screenshot uploaded successfully');
+  } catch (error) {
+    console.error('Error processing tab change:', error);
+  }
+};
 
-/**
- * Check if a URL should be captured
- * @param {string} url - URL to check
- * @returns {boolean} Whether the URL should be captured
- */
-export function shouldCaptureUrl(url) {
-  // Skip chrome:// URLs
-  if (url.startsWith('chrome://')) {
-    return false;
-  }
-  
-  // Skip chrome-extension:// URLs
-  if (url.startsWith('chrome-extension://')) {
-    return false;
-  }
-  
-  // Skip about: URLs
-  if (url.startsWith('about:')) {
-    return false;
-  }
-  
-  // Skip file:// URLs
-  if (url.startsWith('file://')) {
-    return false;
-  }
-  
-  // Skip data: URLs
-  if (url.startsWith('data:')) {
-    return false;
-  }
-  
-  // Skip javascript: URLs
-  if (url.startsWith('javascript:')) {
-    return false;
-  }
-  
-  // Skip empty URLs
-  if (!url || url === '') {
-    return false;
-  }
-  
-  return true;
-}
+export default {
+  captureVisibleTab,
+  getFaviconUrl,
+  processTabChange
+};
